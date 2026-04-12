@@ -50,6 +50,11 @@ export interface ActiveTabContext {
   siteKey: string;
 }
 
+export interface CommandResult {
+  success: boolean;
+  error?: string;
+}
+
 export type PopupToBackgroundMessage =
   | { type: "ENTER_ZAP_MODE"; payload: { tabId: number } }
   | { type: "EXIT_ZAP_MODE"; payload: { tabId: number } }
@@ -65,4 +70,5 @@ export type ContentToBackgroundMessage = {
 export type BackgroundToContentMessage =
   | { type: "ENTER_ZAP_MODE" }
   | { type: "EXIT_ZAP_MODE" }
-  | { type: "REFRESH_ZAPS" };
+  | { type: "REFRESH_ZAPS" }
+  | { type: "PING" };

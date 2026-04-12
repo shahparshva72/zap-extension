@@ -3,7 +3,7 @@
   "name": "Zap",
   "description": "Permanently hide intrusive page elements with a hover-and-click zap tool.",
   "version": "0.1.0",
-  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "permissions": ["storage", "scripting", "tabs"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "assets/background.js",

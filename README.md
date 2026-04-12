@@ -1,6 +1,6 @@
 # Zap Extension
 
-Chromium Manifest V3 extension for permanently zapping intrusive page elements.
+Chromium Manifest V3 extension for permanently zapping intrusive page elements inspired by Arc Browser's Zap feature in Arc Boosts. Built with Codex
 
 ## Setup
 

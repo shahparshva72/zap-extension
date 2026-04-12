@@ -46,6 +46,11 @@ button {
   font: inherit;
 }
 
+button:focus-visible {
+  outline: 2px solid rgba(109, 34, 8, 0.88);
+  outline-offset: 2px;
+}
+
 code {
   font-family: "SFMono-Regular", "Consolas", monospace;
   font-size: 12px;
@@ -187,6 +192,18 @@ code {
 
 .panel {
   padding: 16px;
+}
+
+.status-message {
+  margin: -2px 2px 0;
+  min-height: 20px;
+  color: var(--accent-deep);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.status-message[data-tone="error"] {
+  color: #7e1200;
 }
 
 .panel-head {

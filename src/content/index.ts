@@ -11,6 +11,13 @@ const HIGHLIGHT_ID = "zap-extension-highlight";
 const HUD_ID = "zap-extension-hud";
 const STORAGE_KEY = "zapRulesV1";
 const WWW_PREFIX = /^www\./i;
+const INITIALIZED_FLAG = "__zapExtensionInitialized";
+
+declare global {
+  interface Window {
+    __zapExtensionInitialized?: boolean;
+  }
+}
 
 function getSiteKeyFromUrl(url: string): string {
   return new URL(url).hostname.replace(WWW_PREFIX, "").toLowerCase();
@@ -341,31 +348,51 @@ function patchHistoryEvents(): void {
   });
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  void (async () => {
-    const typedMessage = message as BackgroundToContentMessage;
-
-    switch (typedMessage.type) {
-      case "ENTER_ZAP_MODE":
-        picker.enter();
-        sendResponse({ success: true });
-        return;
-      case "EXIT_ZAP_MODE":
-        picker.exit();
-        sendResponse({ success: true });
-        return;
-      case "REFRESH_ZAPS":
-        await refreshAppliedRules();
-        sendResponse({ success: true });
-        return;
-      default:
-        sendResponse({ success: false });
+function initializeContentScript(): void {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local" || !changes[STORAGE_KEY]) {
+      return;
     }
-  })();
 
-  return true;
-});
+    void refreshAppliedRules();
+  });
 
-void refreshAppliedRules();
-installMutationObserver();
-patchHistoryEvents();
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    void (async () => {
+      const typedMessage = message as BackgroundToContentMessage;
+
+      switch (typedMessage.type) {
+        case "PING":
+          sendResponse({ success: true });
+          return;
+        case "ENTER_ZAP_MODE":
+          picker.enter();
+          sendResponse({ success: true });
+          return;
+        case "EXIT_ZAP_MODE":
+          picker.exit();
+          sendResponse({ success: true });
+          return;
+        case "REFRESH_ZAPS":
+          await refreshAppliedRules();
+          sendResponse({ success: true });
+          return;
+        default:
+          sendResponse({ success: false });
+      }
+    })();
+
+    return true;
+  });
+
+  void refreshAppliedRules();
+  installMutationObserver();
+  patchHistoryEvents();
+}
+
+if (!window[INITIALIZED_FLAG]) {
+  window[INITIALIZED_FLAG] = true;
+  initializeContentScript();
+} else {
+  void refreshAppliedRules();
+}

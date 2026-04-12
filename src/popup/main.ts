@@ -1,6 +1,12 @@
 import "../popup/styles.css";
 
-import type { ActiveTabContext, ListZapsResponse, SiteSummary, ZapRule } from "../shared/types";
+import type {
+  ActiveTabContext,
+  CommandResult,
+  ListZapsResponse,
+  SiteSummary,
+  ZapRule,
+} from "../shared/types";
 
 const WWW_PREFIX = /^www\./i;
 
@@ -82,6 +88,54 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+function setActionState(isBusy: boolean): void {
+  document
+    .querySelectorAll<HTMLButtonElement>("button")
+    .forEach((button) => {
+      button.disabled = isBusy;
+    });
+}
+
+function setStatusMessage(message: string, tone: "default" | "error" = "default"): void {
+  const status = document.getElementById("status-message");
+  if (!status) {
+    return;
+  }
+
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+async function runPopupCommand(
+  message: object,
+  options: { closeOnSuccess?: boolean; loadingMessage: string; successMessage?: string },
+): Promise<boolean> {
+  try {
+    setActionState(true);
+    setStatusMessage(options.loadingMessage);
+    const response = await sendRuntimeMessage<CommandResult>(message);
+    if (!response.success) {
+      setStatusMessage(
+        response.error || "That action could not be completed on this tab.",
+        "error",
+      );
+      return false;
+    }
+
+    setStatusMessage(options.successMessage || "Done.");
+    if (options.closeOnSuccess) {
+      window.close();
+    }
+    return true;
+  } catch (error) {
+    console.warn("[Zap] Popup command failed.", error);
+    setStatusMessage("The extension hit an unexpected error. Please try again.", "error");
+    return false;
+  } finally {
+    setActionState(false);
+  }
+}
+
 async function render(): Promise<void> {
   const app = document.getElementById("app");
   if (!app) {
@@ -126,6 +180,10 @@ async function render(): Promise<void> {
         <button id="exit-zap" class="secondary-button">Exit Mode</button>
       </section>
 
+      <p id="status-message" class="status-message" role="status" aria-live="polite">
+        Ready for ${escapeHtml(context.siteKey)}.
+      </p>
+
       <section class="panel">
         <div class="panel-head">
           <div>
@@ -153,29 +211,49 @@ async function render(): Promise<void> {
 
   const enterButton = document.getElementById("enter-zap");
   enterButton?.addEventListener("click", async () => {
-    await sendRuntimeMessage({
-      type: "ENTER_ZAP_MODE",
-      payload: { tabId: context.tabId },
-    });
-    window.close();
+    await runPopupCommand(
+      {
+        type: "ENTER_ZAP_MODE",
+        payload: { tabId: context.tabId },
+      },
+      {
+        closeOnSuccess: true,
+        loadingMessage: "Starting Zap mode…",
+        successMessage: "Zap mode is ready.",
+      },
+    );
   });
 
   const exitButton = document.getElementById("exit-zap");
   exitButton?.addEventListener("click", async () => {
-    await sendRuntimeMessage({
-      type: "EXIT_ZAP_MODE",
-      payload: { tabId: context.tabId },
-    });
-    window.close();
+    await runPopupCommand(
+      {
+        type: "EXIT_ZAP_MODE",
+        payload: { tabId: context.tabId },
+      },
+      {
+        closeOnSuccess: true,
+        loadingMessage: "Exiting Zap mode…",
+        successMessage: "Zap mode is off.",
+      },
+    );
   });
 
   const restoreAllButton = document.getElementById("restore-all");
   restoreAllButton?.addEventListener("click", async () => {
-    await sendRuntimeMessage({
-      type: "RESTORE_SITE_ZAPS",
-      payload: { siteKey: context.siteKey, tabId: context.tabId },
-    });
-    await render();
+    const success = await runPopupCommand(
+      {
+        type: "RESTORE_SITE_ZAPS",
+        payload: { siteKey: context.siteKey, tabId: context.tabId },
+      },
+      {
+        loadingMessage: "Restoring everything for this site…",
+        successMessage: "All saved zaps were restored for this site.",
+      },
+    );
+    if (success) {
+      await render();
+    }
   });
 
   app.querySelectorAll<HTMLButtonElement>("[data-restore-id]").forEach((button) => {
@@ -185,11 +263,19 @@ async function render(): Promise<void> {
         return;
       }
 
-      await sendRuntimeMessage({
-        type: "RESTORE_ZAP",
-        payload: { id, tabId: context.tabId },
-      });
-      await render();
+      const success = await runPopupCommand(
+        {
+          type: "RESTORE_ZAP",
+          payload: { id, tabId: context.tabId },
+        },
+        {
+          loadingMessage: "Restoring this zap…",
+          successMessage: "The saved zap was restored.",
+        },
+      );
+      if (success) {
+        await render();
+      }
     });
   });
 }

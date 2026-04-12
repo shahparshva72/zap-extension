@@ -9,6 +9,10 @@ import type {
 const STORAGE_KEY = "zapRulesV1";
 const WWW_PREFIX = /^www\./i;
 
+function logWarning(message: string, error?: unknown): void {
+  console.warn(`[Zap] ${message}`, error);
+}
+
 function getMessagePayload<TPayload>(message: unknown): TPayload {
   return (message as { payload: TPayload }).payload;
 }
@@ -104,33 +108,94 @@ function sendMessageToTab(
   );
 }
 
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+async function ensureContentScriptReady(tabId: number): Promise<boolean> {
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab?.url || (!tab.url.startsWith("http://") && !tab.url.startsWith("https://"))) {
+    logWarning("Skipped content script initialization on an unsupported tab.", tab?.url);
+    return false;
+  }
+
+  if (await sendMessageToTab(tabId, { type: "PING" })) {
+    return true;
+  }
+
+  const injected = await chrome.scripting
+    .executeScript({
+      target: { tabId },
+      files: ["assets/content.js"],
+    })
+    .then(() => true)
+    .catch((error) => {
+      logWarning("Failed to inject the content script.", error);
+      return false;
+    });
+
+  if (!injected) {
+    return false;
+  }
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    if (await sendMessageToTab(tabId, { type: "PING" })) {
+      return true;
+    }
+
+    await delay(80);
+  }
+
+  return false;
+}
+
+async function sendTabCommand(
+  tabId: number,
+  message: BackgroundToContentMessage,
+): Promise<boolean> {
+  const ready = await ensureContentScriptReady(tabId);
+  if (!ready) {
+    return false;
+  }
+
+  return sendMessageToTab(tabId, message);
+}
+
 async function refreshTab(tabId: number | undefined): Promise<void> {
   if (typeof tabId !== "number") {
     return;
   }
 
-  await sendMessageToTab(tabId, { type: "REFRESH_ZAPS" });
+  await sendTabCommand(tabId, { type: "REFRESH_ZAPS" });
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void (async () => {
-    switch (message.type) {
-      case "ENTER_ZAP_MODE": {
-        const payload = getMessagePayload<{ tabId: number }>(message);
-        const success = await sendMessageToTab(payload.tabId, {
-          type: "ENTER_ZAP_MODE",
-        });
-        sendResponse({ success });
-        return;
-      }
-      case "EXIT_ZAP_MODE": {
-        const payload = getMessagePayload<{ tabId: number }>(message);
-        const success = await sendMessageToTab(payload.tabId, {
-          type: "EXIT_ZAP_MODE",
-        });
-        sendResponse({ success });
-        return;
-      }
+      switch (message.type) {
+        case "ENTER_ZAP_MODE": {
+          const payload = getMessagePayload<{ tabId: number }>(message);
+          const success = await sendTabCommand(payload.tabId, {
+            type: "ENTER_ZAP_MODE",
+          });
+          sendResponse({
+            success,
+            error: success ? undefined : "Zap mode could not be started on this tab.",
+          });
+          return;
+        }
+        case "EXIT_ZAP_MODE": {
+          const payload = getMessagePayload<{ tabId: number }>(message);
+          const success = await sendTabCommand(payload.tabId, {
+            type: "EXIT_ZAP_MODE",
+          });
+          sendResponse({
+            success,
+            error: success ? undefined : "Zap mode could not be updated on this tab.",
+          });
+          return;
+        }
       case "CREATE_ZAP": {
         const payload = getMessagePayload<ContentToBackgroundMessage["payload"]>(message);
         const pageUrl =
