@@ -1,0 +1,17 @@
+{
+  "name": "zap-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.315",
+    "@types/node": "^24.6.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.7"
+  }
+}
