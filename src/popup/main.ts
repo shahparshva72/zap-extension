@@ -205,7 +205,9 @@ async function render(): Promise<void> {
       ${createSiteSummaryMarkup(otherSites)}
     </section>
 
-    <div class="foot-space"></div>
+    <a class="manage-link" href="${chrome.runtime.getURL("manage.html")}" target="_blank" rel="noopener">
+      Manage all zaps
+    </a>
   `;
 
   const enterButton = document.getElementById("enter-zap");

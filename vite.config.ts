@@ -10,6 +10,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: fileURLToPath(new URL("./popup.html", import.meta.url)),
+        manage: fileURLToPath(new URL("./manage.html", import.meta.url)),
         background: fileURLToPath(new URL("./src/background/index.ts", import.meta.url)),
         content: fileURLToPath(new URL("./src/content/index.ts", import.meta.url)),
       },

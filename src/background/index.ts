@@ -1,6 +1,8 @@
 import type {
   BackgroundToContentMessage,
   ContentToBackgroundMessage,
+  ImportZapsPayload,
+  ImportZapsResponse,
   PopupToBackgroundMessage,
   SiteSummary,
   ZapRule,
@@ -70,6 +72,51 @@ async function removeSiteZapRules(siteKey: string): Promise<number> {
   }
 
   return removedCount;
+}
+
+async function removeAllZapRules(): Promise<number> {
+  const rules = await getAllZapRules();
+  if (rules.length > 0) {
+    await setAllZapRules([]);
+  }
+
+  return rules.length;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+async function importZapRules(entries: ImportZapsPayload["rules"]): Promise<ImportZapsResponse> {
+  let addedCount = 0;
+  let skippedCount = 0;
+
+  for (const entry of entries) {
+    if (!isNonEmptyString(entry?.siteKey) || !isNonEmptyString(entry?.selector) || !isNonEmptyString(entry?.label)) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const siteKey = entry.siteKey.trim().toLowerCase();
+    const createdAt =
+      isNonEmptyString(entry.createdAt) && !Number.isNaN(Date.parse(entry.createdAt))
+        ? entry.createdAt
+        : new Date().toISOString();
+
+    await addZapRule({
+      id: crypto.randomUUID(),
+      siteKey,
+      selector: entry.selector,
+      label: entry.label,
+      createdAt,
+      pageUrl: isNonEmptyString(entry.pageUrl) ? entry.pageUrl : `https://${siteKey}/`,
+      pageTitle: isNonEmptyString(entry.pageTitle) ? entry.pageTitle : siteKey,
+      strategy: "css-hide",
+    });
+    addedCount += 1;
+  }
+
+  return { addedCount, skippedCount };
 }
 
 async function listSiteSummaries(): Promise<SiteSummary[]> {
@@ -236,6 +283,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const removedCount = await removeSiteZapRules(payload.siteKey);
         await refreshTab(payload.tabId);
         sendResponse({ removedCount });
+        return;
+      }
+      case "RESTORE_ALL_ZAPS": {
+        const removedCount = await removeAllZapRules();
+        sendResponse({ removedCount });
+        return;
+      }
+      case "IMPORT_ZAPS": {
+        const payload = getMessagePayload<ImportZapsPayload>(message);
+        const result = await importZapRules(payload.rules);
+        sendResponse(result);
         return;
       }
       default:

@@ -43,6 +43,28 @@ export interface ListZapsResponse {
   siteSummaries: SiteSummary[];
 }
 
+export interface ImportableZapRule {
+  siteKey: string;
+  selector: string;
+  label: string;
+  pageUrl?: string;
+  pageTitle?: string;
+  createdAt?: string;
+}
+
+export interface ImportZapsPayload {
+  rules: ImportableZapRule[];
+}
+
+export interface ImportZapsResponse {
+  addedCount: number;
+  skippedCount: number;
+}
+
+export interface RestoreAllZapsResponse {
+  removedCount: number;
+}
+
 export interface ActiveTabContext {
   tabId: number;
   url: string;
@@ -60,7 +82,9 @@ export type PopupToBackgroundMessage =
   | { type: "EXIT_ZAP_MODE"; payload: { tabId: number } }
   | { type: "LIST_ZAPS"; payload: ListZapsPayload }
   | { type: "RESTORE_ZAP"; payload: RestoreZapPayload }
-  | { type: "RESTORE_SITE_ZAPS"; payload: RestoreSiteZapsPayload };
+  | { type: "RESTORE_SITE_ZAPS"; payload: RestoreSiteZapsPayload }
+  | { type: "RESTORE_ALL_ZAPS"; payload: Record<string, never> }
+  | { type: "IMPORT_ZAPS"; payload: ImportZapsPayload };
 
 export type ContentToBackgroundMessage = {
   type: "CREATE_ZAP";

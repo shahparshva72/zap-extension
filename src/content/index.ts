@@ -30,12 +30,21 @@ async function listZapRules(siteKey: string): Promise<ZapRule[]> {
   return allRules.filter((rule) => rule.siteKey === siteKey);
 }
 
+interface PendingZap {
+  element: Element;
+  parent: Element;
+  nextSibling: Element | null;
+  ruleId: string | null;
+}
+
 class ZapPicker {
   private active = false;
   private highlightedElement: Element | null = null;
   private overlayRoot: HTMLDivElement | null = null;
   private highlightBox: HTMLDivElement | null = null;
-  private hud: HTMLDivElement | null = null;
+  private hudText: HTMLParagraphElement | null = null;
+  private hudUndo: HTMLButtonElement | null = null;
+  private lastZap: PendingZap | null = null;
 
   enter(): void {
     if (this.active) {
@@ -43,8 +52,11 @@ class ZapPicker {
     }
 
     this.active = true;
+    this.lastZap = null;
     this.ensureOverlay();
-    this.updateHud("Zap mode is active. Hover any element and click to remove it.");
+    this.updateHud(
+      "Zap mode is active. Click to remove permanently, Shift+click to remove just for this visit.",
+    );
     document.addEventListener("mousemove", this.handlePointerMove, true);
     document.addEventListener("click", this.handleClick, true);
     document.addEventListener("keydown", this.handleKeyDown, true);
@@ -59,6 +71,7 @@ class ZapPicker {
 
     this.active = false;
     this.highlightedElement = null;
+    this.lastZap = null;
     document.removeEventListener("mousemove", this.handlePointerMove, true);
     document.removeEventListener("click", this.handleClick, true);
     document.removeEventListener("keydown", this.handleKeyDown, true);
@@ -95,38 +108,123 @@ class ZapPicker {
 
     const hud = document.createElement("div");
     hud.id = HUD_ID;
-    hud.textContent = "Zap mode is off.";
     hud.style.position = "fixed";
     hud.style.top = "20px";
     hud.style.right = "20px";
     hud.style.maxWidth = "280px";
     hud.style.padding = "14px 16px";
-    hud.style.borderRadius = "18px";
-    hud.style.border = "1px solid rgba(255, 205, 149, 0.34)";
-    hud.style.background =
-      "linear-gradient(155deg, rgba(16, 11, 7, 0.94), rgba(52, 32, 18, 0.92))";
-    hud.style.color = "#fff6e9";
-    hud.style.fontFamily = "'Iowan Old Style', 'Palatino Linotype', serif";
-    hud.style.fontSize = "13px";
-    hud.style.lineHeight = "1.4";
-    hud.style.letterSpacing = "0.02em";
-    hud.style.boxShadow = "0 16px 36px rgba(20, 12, 8, 0.36)";
+    hud.style.borderRadius = "8px";
+    hud.style.border = "1px solid rgba(255, 216, 61, 0.28)";
+    hud.style.background = "rgba(19, 20, 21, 0.95)";
+    hud.style.color = "#f2f1ec";
+    hud.style.fontFamily =
+      "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace";
+    hud.style.fontSize = "12px";
+    hud.style.lineHeight = "1.5";
+    hud.style.letterSpacing = "0.01em";
+    hud.style.boxShadow = "0 12px 28px rgba(0, 0, 0, 0.32)";
+    hud.style.pointerEvents = "auto";
 
+    const hudText = document.createElement("p");
+    hudText.style.margin = "0";
+    hudText.textContent = "Zap mode is off.";
+
+    const hudUndo = document.createElement("button");
+    hudUndo.type = "button";
+    hudUndo.textContent = "Undo";
+    hudUndo.style.display = "none";
+    hudUndo.style.marginTop = "8px";
+    hudUndo.style.padding = "5px 10px";
+    hudUndo.style.font = "inherit";
+    hudUndo.style.fontSize = "11px";
+    hudUndo.style.fontWeight = "700";
+    hudUndo.style.letterSpacing = "0.05em";
+    hudUndo.style.textTransform = "uppercase";
+    hudUndo.style.color = "#ffd83d";
+    hudUndo.style.background = "transparent";
+    hudUndo.style.border = "1px solid rgba(255, 216, 61, 0.55)";
+    hudUndo.style.borderRadius = "4px";
+    hudUndo.style.cursor = "pointer";
+    hudUndo.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void this.performUndo();
+    });
+
+    hud.append(hudText, hudUndo);
     root.append(highlight, hud);
 
     this.overlayRoot = root;
     this.highlightBox = highlight;
-    this.hud = hud;
+    this.hudText = hudText;
+    this.hudUndo = hudUndo;
     mountOverlay(root);
   }
 
   private updateHud(text: string): void {
-    if (!this.hud) {
+    if (!this.hudText) {
       return;
     }
 
-    this.hud.textContent = text;
+    this.hudText.textContent = text;
+    this.hideUndo();
   }
+
+  private showZapConfirmation(label: string, sessionOnly: boolean, canUndo: boolean): void {
+    if (!this.hudText) {
+      return;
+    }
+
+    const verb = sessionOnly ? `Removed "${label}" for this visit.` : `Zapped "${label}".`;
+    this.hudText.textContent = `${verb} Press Esc to exit or keep clicking to remove more.`;
+
+    if (canUndo) {
+      this.showUndo();
+    } else {
+      this.hideUndo();
+    }
+  }
+
+  private showUndo(): void {
+    if (this.hudUndo) {
+      this.hudUndo.style.display = "inline-block";
+    }
+  }
+
+  private hideUndo(): void {
+    if (this.hudUndo) {
+      this.hudUndo.style.display = "none";
+    }
+  }
+
+  private performUndo = async (): Promise<void> => {
+    const pending = this.lastZap;
+    if (!pending) {
+      return;
+    }
+
+    this.lastZap = null;
+    this.hideUndo();
+
+    if (pending.ruleId) {
+      await chrome.runtime
+        .sendMessage({ type: "RESTORE_ZAP", payload: { id: pending.ruleId } })
+        .catch(() => undefined);
+      await refreshAppliedRules();
+    }
+
+    if (
+      pending.nextSibling &&
+      pending.nextSibling.isConnected &&
+      pending.nextSibling.parentElement === pending.parent
+    ) {
+      pending.parent.insertBefore(pending.element, pending.nextSibling);
+    } else if (pending.parent.isConnected) {
+      pending.parent.appendChild(pending.element);
+    }
+
+    this.updateHud("Restored. Press Esc to exit or keep clicking to remove more.");
+  };
 
   private handleViewportChange = (): void => {
     if (this.highlightedElement) {
@@ -170,30 +268,36 @@ class ZapPicker {
     event.stopImmediatePropagation();
 
     const target = this.highlightedElement;
-    const selector = buildElementSelector(target);
+    const parent = target.parentElement;
+    const nextSibling = target.nextElementSibling;
     const label = buildElementLabel(target);
+    const sessionOnly = event.shiftKey;
 
-    const message: ContentToBackgroundMessage = {
-      type: "CREATE_ZAP",
-      payload: {
-        selector,
-        label,
-        pageUrl: window.location.href,
-        pageTitle: document.title,
-      },
-    };
+    let ruleId: string | null = null;
 
-    const response = (await chrome.runtime.sendMessage(message)) as {
-      rule?: ZapRule;
-    };
+    if (!sessionOnly) {
+      const selector = buildElementSelector(target);
+      const message: ContentToBackgroundMessage = {
+        type: "CREATE_ZAP",
+        payload: {
+          selector,
+          label,
+          pageUrl: window.location.href,
+          pageTitle: document.title,
+        },
+      };
+
+      const response = (await chrome.runtime.sendMessage(message)) as {
+        rule?: ZapRule;
+      };
+      ruleId = response.rule?.id ?? null;
+    }
 
     target.remove();
     await refreshAppliedRules();
-    this.updateHud(
-      response.rule
-        ? `Zapped "${response.rule.label}". Press Esc to exit or keep clicking to remove more.`
-        : "Element removed. Press Esc to exit or keep clicking to remove more.",
-    );
+
+    this.lastZap = parent ? { element: target, parent, nextSibling, ruleId } : null;
+    this.showZapConfirmation(label, sessionOnly, this.lastZap !== null);
     this.clearHighlight();
   };
 
@@ -231,7 +335,8 @@ class ZapPicker {
     this.overlayRoot?.remove();
     this.overlayRoot = null;
     this.highlightBox = null;
-    this.hud = null;
+    this.hudText = null;
+    this.hudUndo = null;
   }
 
   private highlight(element: Element): void {
