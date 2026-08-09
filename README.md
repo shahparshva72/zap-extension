@@ -20,10 +20,10 @@ Chromium Manifest V3 extension for permanently zapping intrusive page elements i
 
 1. Open any regular `http` or `https` page.
 2. Click the extension icon to open the popup.
-3. Press `Enter Zap Mode`.
+3. Press `Zap mode`.
 4. Hover the element you want to remove.
 5. Click once to zap it.
-6. Press `Esc` on the page or use `Exit Mode` in the popup when you are done.
+6. Press `Esc` on the page or use `Stop` in the popup when you are done.
 
 ## Restore Hidden Elements
 

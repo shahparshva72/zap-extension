@@ -49,32 +49,36 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+const ZAP_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>`;
+
 function createSiteSummaryMarkup(summaries: SiteSummary[]): string {
   if (summaries.length === 0) {
-    return `<p class="muted">No saved zaps yet. Enter Zap mode and click the page clutter you never want to see again.</p>`;
+    return `<p class="empty">No other sites yet.</p>`;
   }
 
-  return summaries
+  const rows = summaries
     .slice(0, 6)
     .map(
       (summary) => `
-        <li class="site-summary-card">
-          <span class="site-summary-domain">${summary.siteKey}</span>
-          <span class="site-summary-meta">${summary.count} saved · ${formatDate(summary.latestCreatedAt)}</span>
+        <li class="site-row">
+          <span class="domain">${escapeHtml(summary.siteKey)}</span>
+          <span class="meta">${summary.count} · ${formatDate(summary.latestCreatedAt)}</span>
         </li>
       `,
     )
     .join("");
+
+  return `<ul class="row-list">${rows}</ul>`;
 }
 
 function createZapItemMarkup(rule: ZapRule): string {
   return `
-    <li class="zap-card">
-      <div class="zap-card-copy">
-        <p class="zap-label">${escapeHtml(rule.label)}</p>
-        <p class="zap-meta">${formatDate(rule.createdAt)} · <code>${escapeHtml(rule.selector)}</code></p>
+    <li class="row">
+      <div class="row-copy">
+        <p class="row-label">${escapeHtml(rule.label)}</p>
+        <p class="row-meta">${formatDate(rule.createdAt)} · <code>${escapeHtml(rule.selector)}</code></p>
       </div>
-      <button class="ghost-button" data-restore-id="${rule.id}">Restore</button>
+      <button class="ghost-button" type="button" data-restore-id="${rule.id}">Restore</button>
     </li>
   `;
 }
@@ -145,13 +149,10 @@ async function render(): Promise<void> {
   const context = await getActiveTabContext();
   if (!context) {
     app.innerHTML = `
-      <main class="shell">
-        <section class="unsupported">
-          <p class="eyebrow">Zap</p>
-          <h1>Open a regular web page to start.</h1>
-          <p class="muted">This version works on standard http and https pages, not browser-internal tabs.</p>
-        </section>
-      </main>
+      <header class="strip">
+        <span class="wordmark">${ZAP_ICON_SVG}Zap</span>
+      </header>
+      <p class="empty empty-page">Zap only works on standard http and https pages.</p>
     `;
     return;
   }
@@ -163,50 +164,48 @@ async function render(): Promise<void> {
 
   const siteZapsMarkup =
     data.siteRules.length === 0
-      ? `<p class="muted">No zaps saved for ${context.siteKey} yet.</p>`
-      : `<ul class="zap-list">${data.siteRules.map(createZapItemMarkup).join("")}</ul>`;
+      ? `<p class="empty">Nothing zapped here yet.</p>`
+      : `<ul class="row-list">${data.siteRules.map(createZapItemMarkup).join("")}</ul>`;
+
+  const otherSites = data.siteSummaries.filter(
+    (summary) => summary.siteKey !== context.siteKey,
+  );
 
   app.innerHTML = `
-    <main class="shell">
-      <section class="hero">
-        <p class="eyebrow">Zap</p>
-        <h1>Make the page quieter.</h1>
-        <p class="hero-copy">Hover the clutter, click once, and keep it gone across ${context.siteKey}.</p>
-        <div class="domain-pill">${escapeHtml(context.siteKey)}</div>
-      </section>
+    <header class="strip">
+      <span class="wordmark">${ZAP_ICON_SVG}Zap</span>
+      <span class="host-chip" title="${escapeHtml(context.title)}">${escapeHtml(context.siteKey)}</span>
+    </header>
 
-      <section class="actions-panel">
-        <button id="enter-zap" class="primary-button">Enter Zap Mode</button>
-        <button id="exit-zap" class="secondary-button">Exit Mode</button>
-      </section>
+    <div class="mode-row">
+      <button id="enter-zap" class="mode-button" type="button">
+        <span class="dot" data-tone="accent"></span>Zap mode
+      </button>
+      <button id="exit-zap" class="mode-button" type="button">
+        <span class="dot"></span>Stop
+      </button>
+    </div>
 
-      <p id="status-message" class="status-message" role="status" aria-live="polite">
-        Ready for ${escapeHtml(context.siteKey)}.
-      </p>
+    <p id="status-message" class="status" data-tone="default" role="status" aria-live="polite">Ready.</p>
 
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <p class="panel-kicker">Current site</p>
-            <h2>${escapeHtml(context.title)}</h2>
-          </div>
-          <button id="restore-all" class="ghost-button" ${
-            data.siteRules.length === 0 ? "disabled" : ""
-          }>Restore all</button>
-        </div>
-        ${siteZapsMarkup}
-      </section>
+    <section>
+      <div class="section-head">
+        <span class="section-title">This site <span class="count">${data.siteRules.length}</span></span>
+        <button id="restore-all" class="text-button" type="button" ${
+          data.siteRules.length === 0 ? "disabled" : ""
+        }>Restore all</button>
+      </div>
+      ${siteZapsMarkup}
+    </section>
 
-      <section class="panel">
-        <div class="panel-head compact">
-          <div>
-            <p class="panel-kicker">Saved across sites</p>
-            <h2>Recent activity</h2>
-          </div>
-        </div>
-        <ul class="site-summary-list">${createSiteSummaryMarkup(data.siteSummaries)}</ul>
-      </section>
-    </main>
+    <section>
+      <div class="section-head">
+        <span class="section-title">Other sites <span class="count">${otherSites.length}</span></span>
+      </div>
+      ${createSiteSummaryMarkup(otherSites)}
+    </section>
+
+    <div class="foot-space"></div>
   `;
 
   const enterButton = document.getElementById("enter-zap");
