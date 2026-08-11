@@ -1,18 +1,35 @@
 import "./styles.css";
 
+import { BOOST_STORAGE_KEY } from "../shared/storage";
 import type {
-  ImportZapsResponse,
-  ImportableZapRule,
-  ListZapsResponse,
-  RestoreAllZapsResponse,
-  ZapRule,
+  BoostRule,
+  BoostType,
+  ImportBoostsResponse,
+  ImportableBoostRule,
+  ListBoostsResponse,
+  RestoreAllBoostsResponse,
 } from "../shared/types";
 
-const STORAGE_KEY = "zapRulesV1";
 const ZAP_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>`;
 
-let allRules: ZapRule[] = [];
+const TYPE_LABELS: Record<BoostType, string> = {
+  remove: "Zap",
+  recolor: "Recolor",
+  font: "Font",
+  text: "Text",
+};
+
+const TYPE_FILTER_OPTIONS: Array<{ value: "all" | BoostType; label: string }> = [
+  { value: "all", label: "All types" },
+  { value: "remove", label: "Zap" },
+  { value: "recolor", label: "Recolor" },
+  { value: "font", label: "Font" },
+  { value: "text", label: "Text" },
+];
+
+let allRules: BoostRule[] = [];
 let searchQuery = "";
+let typeFilter: "all" | BoostType = "all";
 let isBusy = false;
 
 async function sendRuntimeMessage<TResponse>(message: object): Promise<TResponse> {
@@ -37,8 +54,36 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+function truncate(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
+}
+
 function pluralize(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+function describeBoostRule(rule: BoostRule): string {
+  switch (rule.type) {
+    case "remove":
+      return rule.label;
+    case "recolor": {
+      const parts: string[] = [];
+      if (rule.textColor) {
+        parts.push(`text ${rule.textColor}`);
+      }
+      if (rule.backgroundColor) {
+        parts.push(`bg ${rule.backgroundColor}`);
+      }
+      const scope = rule.scope === "page" ? "Whole page" : rule.label;
+      return parts.length > 0 ? `${scope} · ${parts.join(", ")}` : scope;
+    }
+    case "font": {
+      const scope = rule.scope === "page" ? "Whole page" : rule.label;
+      return `${scope} · ${rule.fontFamily}`;
+    }
+    case "text":
+      return `"${truncate(rule.originalText, 24)}" → "${truncate(rule.newText, 24)}"`;
+  }
 }
 
 function setStatusMessage(message: string, tone: "default" | "error" = "default"): void {
@@ -66,6 +111,11 @@ function syncControlAvailability(): void {
     search.disabled = isBusy;
   }
 
+  const typeSelect = document.getElementById("type-filter") as HTMLSelectElement | null;
+  if (typeSelect) {
+    typeSelect.disabled = isBusy;
+  }
+
   if (isBusy) {
     return;
   }
@@ -83,17 +133,30 @@ function syncControlAvailability(): void {
   }
 }
 
-function matchesQuery(rule: ZapRule, query: string): boolean {
+function matchesQuery(rule: BoostRule, query: string): boolean {
   if (!query) {
     return true;
   }
 
-  const haystack = `${rule.siteKey} ${rule.label} ${rule.selector}`.toLowerCase();
+  const extra =
+    rule.type === "recolor"
+      ? `${rule.textColor ?? ""} ${rule.backgroundColor ?? ""}`
+      : rule.type === "font"
+        ? rule.fontFamily
+        : rule.type === "text"
+          ? `${rule.originalText} ${rule.newText}`
+          : "";
+
+  const haystack = `${rule.siteKey} ${rule.label} ${rule.selector} ${extra}`.toLowerCase();
   return haystack.includes(query.toLowerCase());
 }
 
-function groupBySite(rules: ZapRule[]): Map<string, ZapRule[]> {
-  const groups = new Map<string, ZapRule[]>();
+function matchesTypeFilter(rule: BoostRule): boolean {
+  return typeFilter === "all" || rule.type === typeFilter;
+}
+
+function groupBySite(rules: BoostRule[]): Map<string, BoostRule[]> {
+  const groups = new Map<string, BoostRule[]>();
 
   for (const rule of rules) {
     const bucket = groups.get(rule.siteKey);
@@ -107,11 +170,11 @@ function groupBySite(rules: ZapRule[]): Map<string, ZapRule[]> {
   return groups;
 }
 
-function createRuleRowMarkup(rule: ZapRule): string {
+function createRuleRowMarkup(rule: BoostRule): string {
   return `
     <li class="row">
       <div class="row-copy">
-        <p class="row-label">${escapeHtml(rule.label)}</p>
+        <p class="row-label"><span class="type-badge">${TYPE_LABELS[rule.type]}</span>${escapeHtml(describeBoostRule(rule))}</p>
         <p class="row-meta">${formatDate(rule.createdAt)} · <code>${escapeHtml(rule.selector)}</code></p>
       </div>
       <button class="ghost-button" type="button" data-restore-id="${rule.id}">Restore</button>
@@ -119,7 +182,7 @@ function createRuleRowMarkup(rule: ZapRule): string {
   `;
 }
 
-function createSiteGroupMarkup(siteKey: string, rules: ZapRule[]): string {
+function createSiteGroupMarkup(siteKey: string, rules: BoostRule[]): string {
   return `
     <section class="site-group">
       <div class="section-head">
@@ -143,14 +206,16 @@ function renderList(): void {
   }
 
   if (allRules.length === 0) {
-    list.innerHTML = `<p class="empty">No zaps saved anywhere yet.</p>`;
+    list.innerHTML = `<p class="empty">No boosts saved anywhere yet.</p>`;
     syncControlAvailability();
     return;
   }
 
-  const filtered = allRules.filter((rule) => matchesQuery(rule, searchQuery));
+  const filtered = allRules.filter(
+    (rule) => matchesTypeFilter(rule) && matchesQuery(rule, searchQuery),
+  );
   if (filtered.length === 0) {
-    list.innerHTML = `<p class="empty">Nothing matches &ldquo;${escapeHtml(searchQuery)}&rdquo;.</p>`;
+    list.innerHTML = `<p class="empty">Nothing matches the current filters.</p>`;
     syncControlAvailability();
     return;
   }
@@ -176,7 +241,7 @@ function attachRowHandlers(): void {
       setBusy(true);
       setStatusMessage("Restoring…");
       try {
-        await sendRuntimeMessage({ type: "RESTORE_ZAP", payload: { id } });
+        await sendRuntimeMessage({ type: "RESTORE_BOOST", payload: { id } });
         await loadRules();
         setStatusMessage("Restored.");
       } finally {
@@ -195,7 +260,7 @@ function attachRowHandlers(): void {
       setBusy(true);
       setStatusMessage(`Restoring everything for ${siteKey}…`);
       try {
-        await sendRuntimeMessage({ type: "RESTORE_SITE_ZAPS", payload: { siteKey } });
+        await sendRuntimeMessage({ type: "RESTORE_SITE_BOOSTS", payload: { siteKey } });
         await loadRules();
         setStatusMessage(`Restored everything for ${siteKey}.`);
       } finally {
@@ -206,8 +271,8 @@ function attachRowHandlers(): void {
 }
 
 async function loadRules(): Promise<void> {
-  const data = await sendRuntimeMessage<ListZapsResponse>({
-    type: "LIST_ZAPS",
+  const data = await sendRuntimeMessage<ListBoostsResponse>({
+    type: "LIST_BOOSTS",
     payload: {},
   });
   allRules = data.siteRules;
@@ -224,7 +289,7 @@ function downloadJson(filename: string, data: unknown): void {
   URL.revokeObjectURL(url);
 }
 
-function parseImportFile(raw: string): ImportableZapRule[] {
+function parseImportFile(raw: string): ImportableBoostRule[] {
   const parsed: unknown = JSON.parse(raw);
   const list = Array.isArray(parsed)
     ? parsed
@@ -233,7 +298,7 @@ function parseImportFile(raw: string): ImportableZapRule[] {
       : null;
 
   if (!list) {
-    throw new Error('Expected a JSON array of zaps, or an object with a "rules" array.');
+    throw new Error('Expected a JSON array of boosts, or an object with a "rules" array.');
   }
 
   return list
@@ -242,6 +307,13 @@ function parseImportFile(raw: string): ImportableZapRule[] {
       siteKey: typeof entry.siteKey === "string" ? entry.siteKey : "",
       selector: typeof entry.selector === "string" ? entry.selector : "",
       label: typeof entry.label === "string" ? entry.label : "",
+      type: typeof entry.type === "string" ? entry.type : undefined,
+      scope: typeof entry.scope === "string" ? entry.scope : undefined,
+      textColor: typeof entry.textColor === "string" ? entry.textColor : undefined,
+      backgroundColor: typeof entry.backgroundColor === "string" ? entry.backgroundColor : undefined,
+      fontFamily: typeof entry.fontFamily === "string" ? entry.fontFamily : undefined,
+      originalText: typeof entry.originalText === "string" ? entry.originalText : undefined,
+      newText: typeof entry.newText === "string" ? entry.newText : undefined,
       pageUrl: typeof entry.pageUrl === "string" ? entry.pageUrl : undefined,
       pageTitle: typeof entry.pageTitle === "string" ? entry.pageTitle : undefined,
       createdAt: typeof entry.createdAt === "string" ? entry.createdAt : undefined,
@@ -266,9 +338,14 @@ function render(): void {
           id="search-input"
           class="search-input"
           type="search"
-          placeholder="Search by site, label, or selector"
+          placeholder="Search by site, label, selector, or value"
           autocomplete="off"
         />
+        <select id="type-filter" class="toolbar-button">
+          ${TYPE_FILTER_OPTIONS.map(
+            (option) => `<option value="${option.value}">${option.label}</option>`,
+          ).join("")}
+        </select>
         <button id="export-button" class="toolbar-button" type="button">Export JSON</button>
         <button id="import-button" class="toolbar-button" type="button">Import JSON</button>
         <input id="import-file" type="file" accept="application/json" hidden />
@@ -289,9 +366,15 @@ function render(): void {
     renderList();
   });
 
+  const typeSelect = document.getElementById("type-filter") as HTMLSelectElement;
+  typeSelect.addEventListener("change", () => {
+    typeFilter = typeSelect.value as "all" | BoostType;
+    renderList();
+  });
+
   document.getElementById("export-button")?.addEventListener("click", () => {
-    downloadJson(`zap-rules-${new Date().toISOString().slice(0, 10)}.json`, allRules);
-    setStatusMessage(`Exported ${pluralize(allRules.length, "zap")}.`);
+    downloadJson(`zap-boosts-${new Date().toISOString().slice(0, 10)}.json`, allRules);
+    setStatusMessage(`Exported ${pluralize(allRules.length, "boost")}.`);
   });
 
   const importInput = document.getElementById("import-file") as HTMLInputElement;
@@ -311,17 +394,17 @@ function render(): void {
     try {
       const raw = await file.text();
       const rules = parseImportFile(raw);
-      const result = await sendRuntimeMessage<ImportZapsResponse>({
-        type: "IMPORT_ZAPS",
+      const result = await sendRuntimeMessage<ImportBoostsResponse>({
+        type: "IMPORT_BOOSTS",
         payload: { rules },
       });
       await loadRules();
       setStatusMessage(
         result.skippedCount > 0
-          ? `Imported ${pluralize(result.addedCount, "zap")}, skipped ${result.skippedCount} invalid ${
+          ? `Imported ${pluralize(result.addedCount, "boost")}, skipped ${result.skippedCount} invalid ${
               result.skippedCount === 1 ? "entry" : "entries"
             }.`
-          : `Imported ${pluralize(result.addedCount, "zap")}.`,
+          : `Imported ${pluralize(result.addedCount, "boost")}.`,
       );
     } catch (error) {
       console.warn("[Zap] Import failed.", error);
@@ -335,26 +418,26 @@ function render(): void {
   });
 
   document.getElementById("restore-everything")?.addEventListener("click", async () => {
-    if (!window.confirm("Restore every saved zap across every site? This cannot be undone.")) {
+    if (!window.confirm("Restore every saved boost across every site? This cannot be undone.")) {
       return;
     }
 
     setBusy(true);
     setStatusMessage("Restoring everything…");
     try {
-      const result = await sendRuntimeMessage<RestoreAllZapsResponse>({
-        type: "RESTORE_ALL_ZAPS",
+      const result = await sendRuntimeMessage<RestoreAllBoostsResponse>({
+        type: "RESTORE_ALL_BOOSTS",
         payload: {},
       });
       await loadRules();
-      setStatusMessage(`Restored ${pluralize(result.removedCount, "zap")}.`);
+      setStatusMessage(`Restored ${pluralize(result.removedCount, "boost")}.`);
     } finally {
       setBusy(false);
     }
   });
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "local" && changes[STORAGE_KEY]) {
+    if (areaName === "local" && changes[BOOST_STORAGE_KEY]) {
       void loadRules();
     }
   });

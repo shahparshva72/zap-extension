@@ -1,6 +1,7 @@
-export type ZapStrategy = "css-hide";
+export type BoostType = "remove" | "recolor" | "font" | "text";
+export type BoostScope = "element" | "page";
 
-export interface ZapRule {
+interface BoostRuleBase {
   id: string;
   siteKey: string;
   selector: string;
@@ -8,26 +9,61 @@ export interface ZapRule {
   createdAt: string;
   pageUrl: string;
   pageTitle: string;
-  strategy: ZapStrategy;
 }
 
-export interface CreateZapPayload {
+export interface RemoveBoostRule extends BoostRuleBase {
+  type: "remove";
+}
+
+export interface RecolorBoostRule extends BoostRuleBase {
+  type: "recolor";
+  scope: BoostScope;
+  textColor?: string;
+  backgroundColor?: string;
+}
+
+export interface FontBoostRule extends BoostRuleBase {
+  type: "font";
+  scope: BoostScope;
+  fontFamily: string;
+}
+
+export interface TextBoostRule extends BoostRuleBase {
+  type: "text";
+  originalText: string;
+  newText: string;
+}
+
+export type BoostRule = RemoveBoostRule | RecolorBoostRule | FontBoostRule | TextBoostRule;
+
+interface CreateBoostPayloadBase {
   selector: string;
   label: string;
   pageUrl: string;
   pageTitle: string;
 }
 
-export interface ListZapsPayload {
+export type CreateBoostPayload =
+  | (CreateBoostPayloadBase & { type: "remove" })
+  | (CreateBoostPayloadBase & {
+      type: "recolor";
+      scope: BoostScope;
+      textColor?: string;
+      backgroundColor?: string;
+    })
+  | (CreateBoostPayloadBase & { type: "font"; scope: BoostScope; fontFamily: string })
+  | (CreateBoostPayloadBase & { type: "text"; originalText: string; newText: string });
+
+export interface ListBoostsPayload {
   siteKey?: string;
 }
 
-export interface RestoreZapPayload {
+export interface RestoreBoostPayload {
   id: string;
   tabId?: number;
 }
 
-export interface RestoreSiteZapsPayload {
+export interface RestoreSiteBoostsPayload {
   siteKey: string;
   tabId?: number;
 }
@@ -38,30 +74,37 @@ export interface SiteSummary {
   latestCreatedAt: string;
 }
 
-export interface ListZapsResponse {
-  siteRules: ZapRule[];
+export interface ListBoostsResponse {
+  siteRules: BoostRule[];
   siteSummaries: SiteSummary[];
 }
 
-export interface ImportableZapRule {
+export interface ImportableBoostRule {
   siteKey: string;
   selector: string;
   label: string;
+  type?: string;
+  scope?: string;
+  textColor?: string;
+  backgroundColor?: string;
+  fontFamily?: string;
+  originalText?: string;
+  newText?: string;
   pageUrl?: string;
   pageTitle?: string;
   createdAt?: string;
 }
 
-export interface ImportZapsPayload {
-  rules: ImportableZapRule[];
+export interface ImportBoostsPayload {
+  rules: ImportableBoostRule[];
 }
 
-export interface ImportZapsResponse {
+export interface ImportBoostsResponse {
   addedCount: number;
   skippedCount: number;
 }
 
-export interface RestoreAllZapsResponse {
+export interface RestoreAllBoostsResponse {
   removedCount: number;
 }
 
@@ -78,21 +121,21 @@ export interface CommandResult {
 }
 
 export type PopupToBackgroundMessage =
-  | { type: "ENTER_ZAP_MODE"; payload: { tabId: number } }
-  | { type: "EXIT_ZAP_MODE"; payload: { tabId: number } }
-  | { type: "LIST_ZAPS"; payload: ListZapsPayload }
-  | { type: "RESTORE_ZAP"; payload: RestoreZapPayload }
-  | { type: "RESTORE_SITE_ZAPS"; payload: RestoreSiteZapsPayload }
-  | { type: "RESTORE_ALL_ZAPS"; payload: Record<string, never> }
-  | { type: "IMPORT_ZAPS"; payload: ImportZapsPayload };
+  | { type: "ENTER_BOOST_MODE"; payload: { tabId: number } }
+  | { type: "EXIT_BOOST_MODE"; payload: { tabId: number } }
+  | { type: "LIST_BOOSTS"; payload: ListBoostsPayload }
+  | { type: "RESTORE_BOOST"; payload: RestoreBoostPayload }
+  | { type: "RESTORE_SITE_BOOSTS"; payload: RestoreSiteBoostsPayload }
+  | { type: "RESTORE_ALL_BOOSTS"; payload: Record<string, never> }
+  | { type: "IMPORT_BOOSTS"; payload: ImportBoostsPayload };
 
 export type ContentToBackgroundMessage = {
-  type: "CREATE_ZAP";
-  payload: CreateZapPayload;
+  type: "CREATE_BOOST";
+  payload: CreateBoostPayload;
 };
 
 export type BackgroundToContentMessage =
-  | { type: "ENTER_ZAP_MODE" }
-  | { type: "EXIT_ZAP_MODE" }
-  | { type: "REFRESH_ZAPS" }
+  | { type: "ENTER_BOOST_MODE" }
+  | { type: "EXIT_BOOST_MODE" }
+  | { type: "REFRESH_BOOSTS" }
   | { type: "PING" };

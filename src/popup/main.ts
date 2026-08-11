@@ -2,13 +2,21 @@ import "../popup/styles.css";
 
 import type {
   ActiveTabContext,
+  BoostRule,
+  BoostType,
   CommandResult,
-  ListZapsResponse,
+  ListBoostsResponse,
   SiteSummary,
-  ZapRule,
 } from "../shared/types";
 
 const WWW_PREFIX = /^www\./i;
+
+const TYPE_LABELS: Record<BoostType, string> = {
+  remove: "Zap",
+  recolor: "Recolor",
+  font: "Font",
+  text: "Text",
+};
 
 async function sendRuntimeMessage<TResponse>(message: object): Promise<TResponse> {
   return chrome.runtime.sendMessage(message) as Promise<TResponse>;
@@ -51,6 +59,34 @@ function formatDate(value: string): string {
 
 const ZAP_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>`;
 
+function truncate(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
+}
+
+function describeBoostRule(rule: BoostRule): string {
+  switch (rule.type) {
+    case "remove":
+      return rule.label;
+    case "recolor": {
+      const parts: string[] = [];
+      if (rule.textColor) {
+        parts.push(`text ${rule.textColor}`);
+      }
+      if (rule.backgroundColor) {
+        parts.push(`bg ${rule.backgroundColor}`);
+      }
+      const scope = rule.scope === "page" ? "Whole page" : rule.label;
+      return parts.length > 0 ? `${scope} · ${parts.join(", ")}` : scope;
+    }
+    case "font": {
+      const scope = rule.scope === "page" ? "Whole page" : rule.label;
+      return `${scope} · ${rule.fontFamily}`;
+    }
+    case "text":
+      return `"${truncate(rule.originalText, 24)}" → "${truncate(rule.newText, 24)}"`;
+  }
+}
+
 function createSiteSummaryMarkup(summaries: SiteSummary[]): string {
   if (summaries.length === 0) {
     return `<p class="empty">No other sites yet.</p>`;
@@ -71,11 +107,11 @@ function createSiteSummaryMarkup(summaries: SiteSummary[]): string {
   return `<ul class="row-list">${rows}</ul>`;
 }
 
-function createZapItemMarkup(rule: ZapRule): string {
+function createBoostItemMarkup(rule: BoostRule): string {
   return `
     <li class="row">
       <div class="row-copy">
-        <p class="row-label">${escapeHtml(rule.label)}</p>
+        <p class="row-label"><span class="type-badge">${TYPE_LABELS[rule.type]}</span>${escapeHtml(describeBoostRule(rule))}</p>
         <p class="row-meta">${formatDate(rule.createdAt)} · <code>${escapeHtml(rule.selector)}</code></p>
       </div>
       <button class="ghost-button" type="button" data-restore-id="${rule.id}">Restore</button>
@@ -157,15 +193,15 @@ async function render(): Promise<void> {
     return;
   }
 
-  const data = await sendRuntimeMessage<ListZapsResponse>({
-    type: "LIST_ZAPS",
+  const data = await sendRuntimeMessage<ListBoostsResponse>({
+    type: "LIST_BOOSTS",
     payload: { siteKey: context.siteKey },
   });
 
-  const siteZapsMarkup =
+  const siteBoostsMarkup =
     data.siteRules.length === 0
-      ? `<p class="empty">Nothing zapped here yet.</p>`
-      : `<ul class="row-list">${data.siteRules.map(createZapItemMarkup).join("")}</ul>`;
+      ? `<p class="empty">Nothing boosted here yet.</p>`
+      : `<ul class="row-list">${data.siteRules.map(createBoostItemMarkup).join("")}</ul>`;
 
   const otherSites = data.siteSummaries.filter(
     (summary) => summary.siteKey !== context.siteKey,
@@ -178,10 +214,10 @@ async function render(): Promise<void> {
     </header>
 
     <div class="mode-row">
-      <button id="enter-zap" class="mode-button" type="button">
-        <span class="dot" data-tone="accent"></span>Zap mode
+      <button id="enter-boost" class="mode-button" type="button">
+        <span class="dot" data-tone="accent"></span>Boost mode
       </button>
-      <button id="exit-zap" class="mode-button" type="button">
+      <button id="exit-boost" class="mode-button" type="button">
         <span class="dot"></span>Stop
       </button>
     </div>
@@ -195,7 +231,7 @@ async function render(): Promise<void> {
           data.siteRules.length === 0 ? "disabled" : ""
         }>Restore all</button>
       </div>
-      ${siteZapsMarkup}
+      ${siteBoostsMarkup}
     </section>
 
     <section>
@@ -206,36 +242,36 @@ async function render(): Promise<void> {
     </section>
 
     <a class="manage-link" href="${chrome.runtime.getURL("manage.html")}" target="_blank" rel="noopener">
-      Manage all zaps
+      Manage all boosts
     </a>
   `;
 
-  const enterButton = document.getElementById("enter-zap");
+  const enterButton = document.getElementById("enter-boost");
   enterButton?.addEventListener("click", async () => {
     await runPopupCommand(
       {
-        type: "ENTER_ZAP_MODE",
+        type: "ENTER_BOOST_MODE",
         payload: { tabId: context.tabId },
       },
       {
         closeOnSuccess: true,
-        loadingMessage: "Starting Zap mode…",
-        successMessage: "Zap mode is ready.",
+        loadingMessage: "Starting Boost mode…",
+        successMessage: "Boost mode is ready.",
       },
     );
   });
 
-  const exitButton = document.getElementById("exit-zap");
+  const exitButton = document.getElementById("exit-boost");
   exitButton?.addEventListener("click", async () => {
     await runPopupCommand(
       {
-        type: "EXIT_ZAP_MODE",
+        type: "EXIT_BOOST_MODE",
         payload: { tabId: context.tabId },
       },
       {
         closeOnSuccess: true,
-        loadingMessage: "Exiting Zap mode…",
-        successMessage: "Zap mode is off.",
+        loadingMessage: "Exiting Boost mode…",
+        successMessage: "Boost mode is off.",
       },
     );
   });
@@ -244,12 +280,12 @@ async function render(): Promise<void> {
   restoreAllButton?.addEventListener("click", async () => {
     const success = await runPopupCommand(
       {
-        type: "RESTORE_SITE_ZAPS",
+        type: "RESTORE_SITE_BOOSTS",
         payload: { siteKey: context.siteKey, tabId: context.tabId },
       },
       {
         loadingMessage: "Restoring everything for this site…",
-        successMessage: "All saved zaps were restored for this site.",
+        successMessage: "All saved boosts were restored for this site.",
       },
     );
     if (success) {
@@ -266,12 +302,12 @@ async function render(): Promise<void> {
 
       const success = await runPopupCommand(
         {
-          type: "RESTORE_ZAP",
+          type: "RESTORE_BOOST",
           payload: { id, tabId: context.tabId },
         },
         {
-          loadingMessage: "Restoring this zap…",
-          successMessage: "The saved zap was restored.",
+          loadingMessage: "Restoring this boost…",
+          successMessage: "The saved boost was restored.",
         },
       );
       if (success) {

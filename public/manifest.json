@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Zap",
-  "description": "Permanently hide intrusive page elements with a hover-and-click zap tool.",
+  "description": "Boost any page: zap intrusive elements, recolor, swap fonts, or edit fixed text, all saved per-site.",
   "version": "0.1.0",
   "permissions": ["storage", "scripting", "tabs"],
   "host_permissions": ["http://*/*", "https://*/*"],

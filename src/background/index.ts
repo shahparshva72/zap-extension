@@ -1,14 +1,16 @@
+import { getAllBoostRules, setAllBoostRules } from "../shared/storage";
 import type {
   BackgroundToContentMessage,
+  BoostRule,
   ContentToBackgroundMessage,
-  ImportZapsPayload,
-  ImportZapsResponse,
+  CreateBoostPayload,
+  ImportBoostsPayload,
+  ImportBoostsResponse,
+  ImportableBoostRule,
   PopupToBackgroundMessage,
   SiteSummary,
-  ZapRule,
 } from "../shared/types";
 
-const STORAGE_KEY = "zapRulesV1";
 const WWW_PREFIX = /^www\./i;
 
 function logWarning(message: string, error?: unknown): void {
@@ -23,61 +25,95 @@ function getSiteKeyFromUrl(url: string): string {
   return new URL(url).hostname.replace(WWW_PREFIX, "").toLowerCase();
 }
 
-async function getAllZapRules(): Promise<ZapRule[]> {
-  const result = await chrome.storage.local.get(STORAGE_KEY);
-  const rules = result[STORAGE_KEY];
-  return Array.isArray(rules) ? (rules as ZapRule[]) : [];
+function ruleDedupeKey(siteKey: string, selector: string, type: string): string {
+  return `${siteKey}|${selector}|${type}`;
 }
 
-async function setAllZapRules(rules: ZapRule[]): Promise<void> {
-  await chrome.storage.local.set({ [STORAGE_KEY]: rules });
+function buildRuleFromPayload(
+  payload: CreateBoostPayload,
+  siteKey: string,
+  pageUrl: string,
+  pageTitle: string,
+): BoostRule {
+  const base = {
+    id: crypto.randomUUID(),
+    siteKey,
+    selector: payload.selector,
+    label: payload.label,
+    createdAt: new Date().toISOString(),
+    pageUrl,
+    pageTitle,
+  };
+
+  switch (payload.type) {
+    case "remove":
+      return { ...base, type: "remove" };
+    case "recolor":
+      return {
+        ...base,
+        type: "recolor",
+        scope: payload.scope,
+        textColor: payload.textColor,
+        backgroundColor: payload.backgroundColor,
+      };
+    case "font":
+      return { ...base, type: "font", scope: payload.scope, fontFamily: payload.fontFamily };
+    case "text":
+      return {
+        ...base,
+        type: "text",
+        originalText: payload.originalText,
+        newText: payload.newText,
+      };
+  }
 }
 
-async function addZapRule(rule: ZapRule): Promise<ZapRule> {
-  const rules = await getAllZapRules();
+async function addBoostRule(rule: BoostRule): Promise<BoostRule> {
+  const rules = await getAllBoostRules();
   const nextRules = rules.filter(
     (existing) =>
-      !(existing.siteKey === rule.siteKey && existing.selector === rule.selector),
+      ruleDedupeKey(existing.siteKey, existing.selector, existing.type) !==
+      ruleDedupeKey(rule.siteKey, rule.selector, rule.type),
   );
 
   nextRules.unshift(rule);
-  await setAllZapRules(nextRules);
+  await setAllBoostRules(nextRules);
   return rule;
 }
 
-async function listZapRules(siteKey?: string): Promise<ZapRule[]> {
-  const rules = await getAllZapRules();
+async function listBoostRules(siteKey?: string): Promise<BoostRule[]> {
+  const rules = await getAllBoostRules();
   return siteKey ? rules.filter((rule) => rule.siteKey === siteKey) : rules;
 }
 
-async function removeZapRule(id: string): Promise<boolean> {
-  const rules = await getAllZapRules();
+async function removeBoostRule(id: string): Promise<boolean> {
+  const rules = await getAllBoostRules();
   const nextRules = rules.filter((rule) => rule.id !== id);
 
   if (nextRules.length === rules.length) {
     return false;
   }
 
-  await setAllZapRules(nextRules);
+  await setAllBoostRules(nextRules);
   return true;
 }
 
-async function removeSiteZapRules(siteKey: string): Promise<number> {
-  const rules = await getAllZapRules();
+async function removeSiteBoostRules(siteKey: string): Promise<number> {
+  const rules = await getAllBoostRules();
   const nextRules = rules.filter((rule) => rule.siteKey !== siteKey);
   const removedCount = rules.length - nextRules.length;
 
   if (removedCount > 0) {
-    await setAllZapRules(nextRules);
+    await setAllBoostRules(nextRules);
   }
 
   return removedCount;
 }
 
-async function removeAllZapRules(): Promise<number> {
-  const rules = await getAllZapRules();
+async function removeAllBoostRules(): Promise<number> {
+  const rules = await getAllBoostRules();
   if (rules.length > 0) {
-    await setAllZapRules([]);
+    await setAllBoostRules([]);
   }
 
   return rules.length;
@@ -87,12 +123,76 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-async function importZapRules(entries: ImportZapsPayload["rules"]): Promise<ImportZapsResponse> {
+type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
+
+function normalizeImportableRule(
+  entry: ImportableBoostRule,
+): DistributiveOmit<BoostRule, "id" | "siteKey" | "createdAt" | "pageUrl" | "pageTitle"> | null {
+  const type = isNonEmptyString(entry.type) ? entry.type : "remove";
+
+  if (!isNonEmptyString(entry.selector) || !isNonEmptyString(entry.label)) {
+    return null;
+  }
+
+  switch (type) {
+    case "remove":
+      return { type: "remove", selector: entry.selector, label: entry.label };
+    case "recolor": {
+      if (!isNonEmptyString(entry.textColor) && !isNonEmptyString(entry.backgroundColor)) {
+        return null;
+      }
+      return {
+        type: "recolor",
+        selector: entry.selector,
+        label: entry.label,
+        scope: entry.scope === "page" ? "page" : "element",
+        textColor: isNonEmptyString(entry.textColor) ? entry.textColor : undefined,
+        backgroundColor: isNonEmptyString(entry.backgroundColor)
+          ? entry.backgroundColor
+          : undefined,
+      };
+    }
+    case "font": {
+      if (!isNonEmptyString(entry.fontFamily)) {
+        return null;
+      }
+      return {
+        type: "font",
+        selector: entry.selector,
+        label: entry.label,
+        scope: entry.scope === "page" ? "page" : "element",
+        fontFamily: entry.fontFamily,
+      };
+    }
+    case "text": {
+      if (!isNonEmptyString(entry.newText)) {
+        return null;
+      }
+      return {
+        type: "text",
+        selector: entry.selector,
+        label: entry.label,
+        originalText: entry.originalText ?? "",
+        newText: entry.newText,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+async function importBoostRules(entries: ImportBoostsPayload["rules"]): Promise<ImportBoostsResponse> {
   let addedCount = 0;
   let skippedCount = 0;
 
   for (const entry of entries) {
-    if (!isNonEmptyString(entry?.siteKey) || !isNonEmptyString(entry?.selector) || !isNonEmptyString(entry?.label)) {
+    if (!isNonEmptyString(entry?.siteKey)) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const normalized = normalizeImportableRule(entry);
+    if (!normalized) {
       skippedCount += 1;
       continue;
     }
@@ -103,16 +203,14 @@ async function importZapRules(entries: ImportZapsPayload["rules"]): Promise<Impo
         ? entry.createdAt
         : new Date().toISOString();
 
-    await addZapRule({
+    await addBoostRule({
+      ...normalized,
       id: crypto.randomUUID(),
       siteKey,
-      selector: entry.selector,
-      label: entry.label,
       createdAt,
       pageUrl: isNonEmptyString(entry.pageUrl) ? entry.pageUrl : `https://${siteKey}/`,
       pageTitle: isNonEmptyString(entry.pageTitle) ? entry.pageTitle : siteKey,
-      strategy: "css-hide",
-    });
+    } as BoostRule);
     addedCount += 1;
   }
 
@@ -120,7 +218,7 @@ async function importZapRules(entries: ImportZapsPayload["rules"]): Promise<Impo
 }
 
 async function listSiteSummaries(): Promise<SiteSummary[]> {
-  const rules = await getAllZapRules();
+  const rules = await getAllBoostRules();
   const bySite = new Map<string, SiteSummary>();
 
   for (const rule of rules) {
@@ -215,84 +313,77 @@ async function refreshTab(tabId: number | undefined): Promise<void> {
     return;
   }
 
-  await sendTabCommand(tabId, { type: "REFRESH_ZAPS" });
+  await sendTabCommand(tabId, { type: "REFRESH_BOOSTS" });
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void (async () => {
       switch (message.type) {
-        case "ENTER_ZAP_MODE": {
+        case "ENTER_BOOST_MODE": {
           const payload = getMessagePayload<{ tabId: number }>(message);
           const success = await sendTabCommand(payload.tabId, {
-            type: "ENTER_ZAP_MODE",
+            type: "ENTER_BOOST_MODE",
           });
           sendResponse({
             success,
-            error: success ? undefined : "Zap mode could not be started on this tab.",
+            error: success ? undefined : "Boost mode could not be started on this tab.",
           });
           return;
         }
-        case "EXIT_ZAP_MODE": {
+        case "EXIT_BOOST_MODE": {
           const payload = getMessagePayload<{ tabId: number }>(message);
           const success = await sendTabCommand(payload.tabId, {
-            type: "EXIT_ZAP_MODE",
+            type: "EXIT_BOOST_MODE",
           });
           sendResponse({
             success,
-            error: success ? undefined : "Zap mode could not be updated on this tab.",
+            error: success ? undefined : "Boost mode could not be updated on this tab.",
           });
           return;
         }
-      case "CREATE_ZAP": {
+      case "CREATE_BOOST": {
         const payload = getMessagePayload<ContentToBackgroundMessage["payload"]>(message);
         const pageUrl =
           payload.pageUrl || sender.tab?.url || "https://unknown.local/";
-        const rule: ZapRule = {
-          id: crypto.randomUUID(),
-          siteKey: getSiteKeyFromUrl(pageUrl),
-          selector: payload.selector,
-          label: payload.label,
-          createdAt: new Date().toISOString(),
-          pageUrl,
-          pageTitle: payload.pageTitle || sender.tab?.title || pageUrl,
-          strategy: "css-hide",
-        };
-        const savedRule = await addZapRule(rule);
+        const siteKey = getSiteKeyFromUrl(pageUrl);
+        const pageTitle = payload.pageTitle || sender.tab?.title || pageUrl;
+        const rule = buildRuleFromPayload(payload, siteKey, pageUrl, pageTitle);
+        const savedRule = await addBoostRule(rule);
         sendResponse({ rule: savedRule });
         return;
       }
-      case "LIST_ZAPS": {
+      case "LIST_BOOSTS": {
         const payload = getMessagePayload<PopupToBackgroundMessage["payload"]>(message);
         const siteKey = "siteKey" in payload ? payload.siteKey : undefined;
         const [siteRules, siteSummaries] = await Promise.all([
-          listZapRules(siteKey),
+          listBoostRules(siteKey),
           listSiteSummaries(),
         ]);
         sendResponse({ siteRules, siteSummaries });
         return;
       }
-      case "RESTORE_ZAP": {
+      case "RESTORE_BOOST": {
         const payload = getMessagePayload<{ id: string; tabId?: number }>(message);
-        const removed = await removeZapRule(payload.id);
+        const removed = await removeBoostRule(payload.id);
         await refreshTab(payload.tabId);
         sendResponse({ removed });
         return;
       }
-      case "RESTORE_SITE_ZAPS": {
+      case "RESTORE_SITE_BOOSTS": {
         const payload = getMessagePayload<{ siteKey: string; tabId?: number }>(message);
-        const removedCount = await removeSiteZapRules(payload.siteKey);
+        const removedCount = await removeSiteBoostRules(payload.siteKey);
         await refreshTab(payload.tabId);
         sendResponse({ removedCount });
         return;
       }
-      case "RESTORE_ALL_ZAPS": {
-        const removedCount = await removeAllZapRules();
+      case "RESTORE_ALL_BOOSTS": {
+        const removedCount = await removeAllBoostRules();
         sendResponse({ removedCount });
         return;
       }
-      case "IMPORT_ZAPS": {
-        const payload = getMessagePayload<ImportZapsPayload>(message);
-        const result = await importZapRules(payload.rules);
+      case "IMPORT_BOOSTS": {
+        const payload = getMessagePayload<ImportBoostsPayload>(message);
+        const result = await importBoostRules(payload.rules);
         sendResponse(result);
         return;
       }
