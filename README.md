@@ -11,6 +11,10 @@ Codex
 2. Build the extension with `npm run build`.
 3. For active development, use `npm run dev` to rebuild on file changes.
 
+The content script is built separately (`vite.content.config.ts`) as one self-contained
+file, because content scripts can't load `import`s. It can import from `src/shared`
+like any other entry point.
+
 ## Load The Extension
 
 1. Open `chrome://extensions` in Chrome, Arc, Edge, or Brave.
@@ -30,7 +34,11 @@ Codex
      this visit only (nothing is saved). If you change your mind right away, click `Undo`
      in the HUD.
    - **Recolor** opens a small form to set the element's text and/or background color,
-     with a live preview. Check `Apply to whole page` to recolor the whole site instead
+     with a live preview. Text color applies to everything inside the element (headings,
+     links, spans), and a background color replaces any gradient or background image.
+     Re-opening a recolored element starts from its saved colors. If you picked a single
+     label, you can also change its text in the same editor (Font has this too); one Undo
+     reverts both. Check `Apply to whole page` to recolor the whole site instead
      of just that element.
    - **Font** opens a font field (pick a preset or type any CSS font stack) with a live
      preview, and the same `Apply to whole page` option.
@@ -50,7 +58,6 @@ Notes:
 1. Open the popup while you are on the same site.
 2. Use `Restore` next to a single saved boost, or `Restore all` to remove every saved
    boost for that site.
-3. Reload the page if the site does not immediately re-render the restored element.
 
 ## Manage All Boosts
 
@@ -72,6 +79,10 @@ saved boost across every site:
 - Zap, Recolor, and Font rules are applied by injecting CSS into the page (`display:
   none`, `color`/`background-color`, or `font-family`, all `!important`). Text rules are
   applied by the content script directly setting `textContent` on matching elements, and
-  are re-applied if the site's own JavaScript changes the DOM back.
+  are re-applied if the site's own JavaScript changes the DOM back. A text rule only
+  replaces text that still matches what it was created for, so content the site has
+  since changed (a counter, a different item) is left alone.
+- Colors and fonts are validated before they are saved, imported, or injected, so an
+  imported or hand-edited value can't inject arbitrary CSS.
 - Restore individual boosts, all current-site boosts, or everything everywhere from the
   popup or the `Manage all boosts` page.

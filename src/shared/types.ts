@@ -74,7 +74,16 @@ export interface SiteSummary {
   latestCreatedAt: string;
 }
 
-export interface ListBoostsResponse {
+export interface CommandResult {
+  success: boolean;
+  error?: string;
+}
+
+export interface CreateBoostResponse extends CommandResult {
+  rule?: BoostRule;
+}
+
+export interface ListBoostsResponse extends CommandResult {
   siteRules: BoostRule[];
   siteSummaries: SiteSummary[];
 }
@@ -99,12 +108,16 @@ export interface ImportBoostsPayload {
   rules: ImportableBoostRule[];
 }
 
-export interface ImportBoostsResponse {
+export interface ImportBoostsResponse extends CommandResult {
   addedCount: number;
   skippedCount: number;
 }
 
-export interface RestoreAllBoostsResponse {
+export interface RestoreBoostResponse extends CommandResult {
+  removed: boolean;
+}
+
+export interface RestoreAllBoostsResponse extends CommandResult {
   removedCount: number;
 }
 
@@ -113,11 +126,6 @@ export interface ActiveTabContext {
   url: string;
   title: string;
   siteKey: string;
-}
-
-export interface CommandResult {
-  success: boolean;
-  error?: string;
 }
 
 export type PopupToBackgroundMessage =
@@ -133,6 +141,8 @@ export type ContentToBackgroundMessage = {
   type: "CREATE_BOOST";
   payload: CreateBoostPayload;
 };
+
+export type RuntimeMessage = PopupToBackgroundMessage | ContentToBackgroundMessage;
 
 export type BackgroundToContentMessage =
   | { type: "ENTER_BOOST_MODE" }

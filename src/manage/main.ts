@@ -1,23 +1,22 @@
 import "./styles.css";
 
+import {
+  describeBoostRule,
+  escapeHtml,
+  formatDate,
+  TYPE_LABELS,
+  ZAP_ICON_SVG,
+} from "../shared/format";
 import { BOOST_STORAGE_KEY } from "../shared/storage";
 import type {
   BoostRule,
   BoostType,
+  CommandResult,
   ImportBoostsResponse,
   ImportableBoostRule,
   ListBoostsResponse,
   RestoreAllBoostsResponse,
 } from "../shared/types";
-
-const ZAP_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>`;
-
-const TYPE_LABELS: Record<BoostType, string> = {
-  remove: "Zap",
-  recolor: "Recolor",
-  font: "Font",
-  text: "Text",
-};
 
 const TYPE_FILTER_OPTIONS: Array<{ value: "all" | BoostType; label: string }> = [
   { value: "all", label: "All types" },
@@ -32,58 +31,23 @@ let searchQuery = "";
 let typeFilter: "all" | BoostType = "all";
 let isBusy = false;
 
-async function sendRuntimeMessage<TResponse>(message: object): Promise<TResponse> {
-  return chrome.runtime.sendMessage(message) as Promise<TResponse>;
+async function sendRuntimeMessage<TResponse extends CommandResult>(
+  message: object,
+): Promise<TResponse> {
+  const response = (await chrome.runtime.sendMessage(message)) as TResponse | undefined;
+  if (!response?.success) {
+    throw new Error(response?.error || "The extension hit an unexpected error. Please try again.");
+  }
+  return response;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function truncate(value: string, maxLength: number): string {
-  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
+function reportError(error: unknown, fallback: string): void {
+  console.warn("[Zap] Manage action failed.", error);
+  setStatusMessage(error instanceof Error ? error.message : fallback, "error");
 }
 
 function pluralize(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
-}
-
-function describeBoostRule(rule: BoostRule): string {
-  switch (rule.type) {
-    case "remove":
-      return rule.label;
-    case "recolor": {
-      const parts: string[] = [];
-      if (rule.textColor) {
-        parts.push(`text ${rule.textColor}`);
-      }
-      if (rule.backgroundColor) {
-        parts.push(`bg ${rule.backgroundColor}`);
-      }
-      const scope = rule.scope === "page" ? "Whole page" : rule.label;
-      return parts.length > 0 ? `${scope} · ${parts.join(", ")}` : scope;
-    }
-    case "font": {
-      const scope = rule.scope === "page" ? "Whole page" : rule.label;
-      return `${scope} · ${rule.fontFamily}`;
-    }
-    case "text":
-      return `"${truncate(rule.originalText, 24)}" → "${truncate(rule.newText, 24)}"`;
-  }
 }
 
 function setStatusMessage(message: string, tone: "default" | "error" = "default"): void {
@@ -244,6 +208,8 @@ function attachRowHandlers(): void {
         await sendRuntimeMessage({ type: "RESTORE_BOOST", payload: { id } });
         await loadRules();
         setStatusMessage("Restored.");
+      } catch (error) {
+        reportError(error, "That boost could not be restored.");
       } finally {
         setBusy(false);
       }
@@ -263,6 +229,8 @@ function attachRowHandlers(): void {
         await sendRuntimeMessage({ type: "RESTORE_SITE_BOOSTS", payload: { siteKey } });
         await loadRules();
         setStatusMessage(`Restored everything for ${siteKey}.`);
+      } catch (error) {
+        reportError(error, `Boosts for ${siteKey} could not be restored.`);
       } finally {
         setBusy(false);
       }
@@ -407,11 +375,7 @@ function render(): void {
           : `Imported ${pluralize(result.addedCount, "boost")}.`,
       );
     } catch (error) {
-      console.warn("[Zap] Import failed.", error);
-      setStatusMessage(
-        error instanceof Error ? error.message : "That file could not be imported.",
-        "error",
-      );
+      reportError(error, "That file could not be imported.");
     } finally {
       setBusy(false);
     }
@@ -431,6 +395,8 @@ function render(): void {
       });
       await loadRules();
       setStatusMessage(`Restored ${pluralize(result.removedCount, "boost")}.`);
+    } catch (error) {
+      reportError(error, "Boosts could not be restored.");
     } finally {
       setBusy(false);
     }
@@ -438,11 +404,11 @@ function render(): void {
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "local" && changes[BOOST_STORAGE_KEY]) {
-      void loadRules();
+      void loadRules().catch((error) => reportError(error, "Saved boosts could not be loaded."));
     }
   });
 
-  void loadRules();
+  void loadRules().catch((error) => reportError(error, "Saved boosts could not be loaded."));
 }
 
 render();

@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
+    "build": "rm -rf dist && vite build && vite build --config vite.content.config.ts",
+    "dev": "rm -rf dist && (vite build --watch & vite build --config vite.content.config.ts --watch & wait)",
     "check": "tsc --noEmit"
   },
   "devDependencies": {

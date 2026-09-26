@@ -1,29 +1,17 @@
 import "../popup/styles.css";
 
+import { describeBoostRule, escapeHtml, formatDate, TYPE_LABELS, ZAP_ICON_SVG } from "../shared/format";
+import { getSiteKeyFromUrl } from "../shared/rules";
 import type {
   ActiveTabContext,
   BoostRule,
-  BoostType,
   CommandResult,
   ListBoostsResponse,
   SiteSummary,
 } from "../shared/types";
 
-const WWW_PREFIX = /^www\./i;
-
-const TYPE_LABELS: Record<BoostType, string> = {
-  remove: "Zap",
-  recolor: "Recolor",
-  font: "Font",
-  text: "Text",
-};
-
 async function sendRuntimeMessage<TResponse>(message: object): Promise<TResponse> {
   return chrome.runtime.sendMessage(message) as Promise<TResponse>;
-}
-
-function getSiteKeyFromUrl(url: string): string {
-  return new URL(url).hostname.replace(WWW_PREFIX, "").toLowerCase();
 }
 
 function isSupportedPage(url: string | undefined): url is string {
@@ -46,45 +34,6 @@ async function getActiveTabContext(): Promise<ActiveTabContext | null> {
     title: tab.title || "Current page",
     siteKey: getSiteKeyFromUrl(tab.url),
   };
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-const ZAP_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>`;
-
-function truncate(value: string, maxLength: number): string {
-  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
-}
-
-function describeBoostRule(rule: BoostRule): string {
-  switch (rule.type) {
-    case "remove":
-      return rule.label;
-    case "recolor": {
-      const parts: string[] = [];
-      if (rule.textColor) {
-        parts.push(`text ${rule.textColor}`);
-      }
-      if (rule.backgroundColor) {
-        parts.push(`bg ${rule.backgroundColor}`);
-      }
-      const scope = rule.scope === "page" ? "Whole page" : rule.label;
-      return parts.length > 0 ? `${scope} · ${parts.join(", ")}` : scope;
-    }
-    case "font": {
-      const scope = rule.scope === "page" ? "Whole page" : rule.label;
-      return `${scope} · ${rule.fontFamily}`;
-    }
-    case "text":
-      return `"${truncate(rule.originalText, 24)}" → "${truncate(rule.newText, 24)}"`;
-  }
 }
 
 function createSiteSummaryMarkup(summaries: SiteSummary[]): string {
@@ -117,15 +66,6 @@ function createBoostItemMarkup(rule: BoostRule): string {
       <button class="ghost-button" type="button" data-restore-id="${rule.id}">Restore</button>
     </li>
   `;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
 }
 
 function setActionState(isBusy: boolean): void {
@@ -196,7 +136,17 @@ async function render(): Promise<void> {
   const data = await sendRuntimeMessage<ListBoostsResponse>({
     type: "LIST_BOOSTS",
     payload: { siteKey: context.siteKey },
-  });
+  }).catch(() => null);
+
+  if (!data?.success) {
+    app.innerHTML = `
+      <header class="strip">
+        <span class="wordmark">${ZAP_ICON_SVG}Zap</span>
+      </header>
+      <p class="empty empty-page">Saved boosts could not be loaded. Close and reopen the popup to try again.</p>
+    `;
+    return;
+  }
 
   const siteBoostsMarkup =
     data.siteRules.length === 0

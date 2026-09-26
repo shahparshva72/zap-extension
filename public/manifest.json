@@ -3,7 +3,7 @@
   "name": "Zap",
   "description": "Boost any page: zap intrusive elements, recolor, swap fonts, or edit fixed text, all saved per-site.",
   "version": "0.1.0",
-  "permissions": ["storage", "scripting", "tabs"],
+  "permissions": ["storage", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "assets/background.js",

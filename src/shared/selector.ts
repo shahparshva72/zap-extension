@@ -35,6 +35,16 @@ function isLikelyStableValue(value: string): boolean {
   return /^[a-zA-Z][a-zA-Z0-9:_-]*$/.test(value);
 }
 
+// IDs generated per render, e.g. React useId (`:r1:`, `«r1»`), Radix (`radix-:r1:`),
+// Headless UI (`headlessui-menu-button-3`), Ember (`ember123`).
+const GENERATED_ID_PATTERNS = [/[:«»]/, /^headlessui-/i, /^ember\d+$/i, /^react-/i, /-\d+$/];
+
+function isLikelyStableId(value: string): boolean {
+  return (
+    isLikelyStableValue(value) && !GENERATED_ID_PATTERNS.some((pattern) => pattern.test(value))
+  );
+}
+
 function isStableClassName(className: string): boolean {
   if (!className || className.length > 40) {
     return false;
@@ -118,7 +128,7 @@ function candidateFromAttributes(element: Element): SelectorCandidate[] {
 
 function candidateFromId(element: Element): SelectorCandidate[] {
   const id = element.id;
-  if (!isLikelyStableValue(id)) {
+  if (!isLikelyStableId(id)) {
     return [];
   }
 
@@ -138,18 +148,7 @@ function candidateFromClasses(element: Element): SelectorCandidate[] {
   return countMatches(selector) === 1 ? [{ selector, score: 70 }] : [];
 }
 
-function buildStructuralSegment(element: Element): string {
-  const tagName = element.tagName.toLowerCase();
-
-  if (element.id && isLikelyStableValue(element.id)) {
-    return `${tagName}#${cssEscape(element.id)}`;
-  }
-
-  const stableClasses = Array.from(element.classList).filter(isStableClassName).slice(0, 2);
-  if (stableClasses.length > 0) {
-    return `${tagName}${stableClasses.map((className) => `.${cssEscape(className)}`).join("")}`;
-  }
-
+function nthOfType(element: Element): number {
   let index = 1;
   let sibling = element.previousElementSibling;
   while (sibling) {
@@ -158,15 +157,43 @@ function buildStructuralSegment(element: Element): string {
     }
     sibling = sibling.previousElementSibling;
   }
+  return index;
+}
 
-  return `${tagName}:nth-of-type(${index})`;
+function buildStructuralSegment(element: Element): string {
+  const tagName = element.tagName.toLowerCase();
+
+  if (element.id && isLikelyStableId(element.id)) {
+    return `${tagName}#${cssEscape(element.id)}`;
+  }
+
+  const stableClasses = Array.from(element.classList).filter(isStableClassName).slice(0, 2);
+  const segment = `${tagName}${stableClasses.map((className) => `.${cssEscape(className)}`).join("")}`;
+
+  // Add a position whenever the segment alone doesn't single this element out among its
+  // siblings, so each step of the path narrows to exactly one child.
+  const siblings = element.parentElement ? Array.from(element.parentElement.children) : [element];
+  let matchingSiblings = 0;
+  for (const sibling of siblings) {
+    try {
+      if (sibling.matches(segment)) {
+        matchingSiblings += 1;
+      }
+    } catch {
+      matchingSiblings += 1;
+    }
+  }
+
+  return matchingSiblings > 1 ? `${segment}:nth-of-type(${nthOfType(element)})` : segment;
 }
 
 function buildStructuralFallback(element: Element): string {
   const segments: string[] = [];
   let current: Element | null = element;
 
-  while (current && segments.length < 5) {
+  // Walk up until the path is unique. Every segment is unique among its siblings, so the
+  // full path from <html> always is.
+  while (current) {
     segments.unshift(buildStructuralSegment(current));
     const selector = segments.join(" > ");
     if (countMatches(selector) === 1) {

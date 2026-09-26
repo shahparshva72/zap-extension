@@ -1,32 +1,45 @@
-import { getAllBoostRules, setAllBoostRules } from "../shared/storage";
+import { getSiteKeyFromUrl, isNonEmptyString, normalizeStoredRule } from "../shared/rules";
+import { getAllBoostRules, migrateLegacyRules, setAllBoostRules } from "../shared/storage";
 import type {
   BackgroundToContentMessage,
   BoostRule,
-  ContentToBackgroundMessage,
   CreateBoostPayload,
   ImportBoostsPayload,
   ImportBoostsResponse,
-  ImportableBoostRule,
-  PopupToBackgroundMessage,
+  RuntimeMessage,
   SiteSummary,
 } from "../shared/types";
-
-const WWW_PREFIX = /^www\./i;
 
 function logWarning(message: string, error?: unknown): void {
   console.warn(`[Zap] ${message}`, error);
 }
 
-function getMessagePayload<TPayload>(message: unknown): TPayload {
-  return (message as { payload: TPayload }).payload;
+function ruleDedupeKey(rule: Pick<BoostRule, "siteKey" | "selector" | "type">): string {
+  return `${rule.siteKey}|${rule.selector}|${rule.type}`;
 }
 
-function getSiteKeyFromUrl(url: string): string {
-  return new URL(url).hostname.replace(WWW_PREFIX, "").toLowerCase();
+// Every read-modify-write of the rule list goes through this queue. Without it, two
+// overlapping writes (a quick double zap, or a zap during an import) each read the same
+// list and the second write silently drops the first one's change.
+let rulesQueue: Promise<unknown> = Promise.resolve();
+
+function updateRules<T>(
+  mutate: (rules: BoostRule[]) => { rules: BoostRule[] | null; result: T },
+): Promise<T> {
+  const run = rulesQueue.then(async () => {
+    const { rules, result } = mutate(await getAllBoostRules());
+    if (rules) {
+      await setAllBoostRules(rules);
+    }
+    return result;
+  });
+  rulesQueue = run.catch(() => undefined);
+  return run;
 }
 
-function ruleDedupeKey(siteKey: string, selector: string, type: string): string {
-  return `${siteKey}|${selector}|${type}`;
+function upsertRule(rules: BoostRule[], rule: BoostRule): BoostRule[] {
+  const key = ruleDedupeKey(rule);
+  return [rule, ...rules.filter((existing) => ruleDedupeKey(existing) !== key)];
 }
 
 function buildRuleFromPayload(
@@ -34,51 +47,21 @@ function buildRuleFromPayload(
   siteKey: string,
   pageUrl: string,
   pageTitle: string,
-): BoostRule {
-  const base = {
+): BoostRule | null {
+  // Run the payload through the same validation as stored rules so an unsafe color or
+  // font value is rejected before it is ever saved.
+  return normalizeStoredRule({
+    ...payload,
     id: crypto.randomUUID(),
     siteKey,
-    selector: payload.selector,
-    label: payload.label,
     createdAt: new Date().toISOString(),
     pageUrl,
     pageTitle,
-  };
-
-  switch (payload.type) {
-    case "remove":
-      return { ...base, type: "remove" };
-    case "recolor":
-      return {
-        ...base,
-        type: "recolor",
-        scope: payload.scope,
-        textColor: payload.textColor,
-        backgroundColor: payload.backgroundColor,
-      };
-    case "font":
-      return { ...base, type: "font", scope: payload.scope, fontFamily: payload.fontFamily };
-    case "text":
-      return {
-        ...base,
-        type: "text",
-        originalText: payload.originalText,
-        newText: payload.newText,
-      };
-  }
+  });
 }
 
-async function addBoostRule(rule: BoostRule): Promise<BoostRule> {
-  const rules = await getAllBoostRules();
-  const nextRules = rules.filter(
-    (existing) =>
-      ruleDedupeKey(existing.siteKey, existing.selector, existing.type) !==
-      ruleDedupeKey(rule.siteKey, rule.selector, rule.type),
-  );
-
-  nextRules.unshift(rule);
-  await setAllBoostRules(nextRules);
-  return rule;
+function addBoostRule(rule: BoostRule): Promise<BoostRule> {
+  return updateRules((rules) => ({ rules: upsertRule(rules, rule), result: rule }));
 }
 
 async function listBoostRules(siteKey?: string): Promise<BoostRule[]> {
@@ -86,135 +69,70 @@ async function listBoostRules(siteKey?: string): Promise<BoostRule[]> {
   return siteKey ? rules.filter((rule) => rule.siteKey === siteKey) : rules;
 }
 
-async function removeBoostRule(id: string): Promise<boolean> {
-  const rules = await getAllBoostRules();
-  const nextRules = rules.filter((rule) => rule.id !== id);
-
-  if (nextRules.length === rules.length) {
-    return false;
-  }
-
-  await setAllBoostRules(nextRules);
-  return true;
+function removeBoostRule(id: string): Promise<boolean> {
+  return updateRules((rules) => {
+    const nextRules = rules.filter((rule) => rule.id !== id);
+    const removed = nextRules.length !== rules.length;
+    return { rules: removed ? nextRules : null, result: removed };
+  });
 }
 
-async function removeSiteBoostRules(siteKey: string): Promise<number> {
-  const rules = await getAllBoostRules();
-  const nextRules = rules.filter((rule) => rule.siteKey !== siteKey);
-  const removedCount = rules.length - nextRules.length;
-
-  if (removedCount > 0) {
-    await setAllBoostRules(nextRules);
-  }
-
-  return removedCount;
+function removeSiteBoostRules(siteKey: string): Promise<number> {
+  return updateRules((rules) => {
+    const nextRules = rules.filter((rule) => rule.siteKey !== siteKey);
+    const removedCount = rules.length - nextRules.length;
+    return { rules: removedCount > 0 ? nextRules : null, result: removedCount };
+  });
 }
 
-async function removeAllBoostRules(): Promise<number> {
-  const rules = await getAllBoostRules();
-  if (rules.length > 0) {
-    await setAllBoostRules([]);
-  }
-
-  return rules.length;
+function removeAllBoostRules(): Promise<number> {
+  return updateRules((rules) => ({
+    rules: rules.length > 0 ? [] : null,
+    result: rules.length,
+  }));
 }
 
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
+function importBoostRules(entries: ImportBoostsPayload["rules"]): Promise<ImportBoostsResponse> {
+  return updateRules((rules) => {
+    let nextRules = rules;
+    let addedCount = 0;
+    let skippedCount = 0;
 
-type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
-
-function normalizeImportableRule(
-  entry: ImportableBoostRule,
-): DistributiveOmit<BoostRule, "id" | "siteKey" | "createdAt" | "pageUrl" | "pageTitle"> | null {
-  const type = isNonEmptyString(entry.type) ? entry.type : "remove";
-
-  if (!isNonEmptyString(entry.selector) || !isNonEmptyString(entry.label)) {
-    return null;
-  }
-
-  switch (type) {
-    case "remove":
-      return { type: "remove", selector: entry.selector, label: entry.label };
-    case "recolor": {
-      if (!isNonEmptyString(entry.textColor) && !isNonEmptyString(entry.backgroundColor)) {
-        return null;
+    for (const entry of Array.isArray(entries) ? entries : []) {
+      if (!isNonEmptyString(entry?.siteKey)) {
+        skippedCount += 1;
+        continue;
       }
-      return {
-        type: "recolor",
-        selector: entry.selector,
-        label: entry.label,
-        scope: entry.scope === "page" ? "page" : "element",
-        textColor: isNonEmptyString(entry.textColor) ? entry.textColor : undefined,
-        backgroundColor: isNonEmptyString(entry.backgroundColor)
-          ? entry.backgroundColor
-          : undefined,
-      };
-    }
-    case "font": {
-      if (!isNonEmptyString(entry.fontFamily)) {
-        return null;
+
+      const siteKey = entry.siteKey.trim().toLowerCase();
+      const createdAt =
+        isNonEmptyString(entry.createdAt) && !Number.isNaN(Date.parse(entry.createdAt))
+          ? entry.createdAt
+          : new Date().toISOString();
+      const rule = normalizeStoredRule({
+        ...entry,
+        type: isNonEmptyString(entry.type) ? entry.type : "remove",
+        id: crypto.randomUUID(),
+        siteKey,
+        createdAt,
+        pageUrl: isNonEmptyString(entry.pageUrl) ? entry.pageUrl : `https://${siteKey}/`,
+        pageTitle: isNonEmptyString(entry.pageTitle) ? entry.pageTitle : siteKey,
+      });
+
+      if (!rule) {
+        skippedCount += 1;
+        continue;
       }
-      return {
-        type: "font",
-        selector: entry.selector,
-        label: entry.label,
-        scope: entry.scope === "page" ? "page" : "element",
-        fontFamily: entry.fontFamily,
-      };
-    }
-    case "text": {
-      if (!isNonEmptyString(entry.newText)) {
-        return null;
-      }
-      return {
-        type: "text",
-        selector: entry.selector,
-        label: entry.label,
-        originalText: entry.originalText ?? "",
-        newText: entry.newText,
-      };
-    }
-    default:
-      return null;
-  }
-}
 
-async function importBoostRules(entries: ImportBoostsPayload["rules"]): Promise<ImportBoostsResponse> {
-  let addedCount = 0;
-  let skippedCount = 0;
-
-  for (const entry of entries) {
-    if (!isNonEmptyString(entry?.siteKey)) {
-      skippedCount += 1;
-      continue;
+      nextRules = upsertRule(nextRules, rule);
+      addedCount += 1;
     }
 
-    const normalized = normalizeImportableRule(entry);
-    if (!normalized) {
-      skippedCount += 1;
-      continue;
-    }
-
-    const siteKey = entry.siteKey.trim().toLowerCase();
-    const createdAt =
-      isNonEmptyString(entry.createdAt) && !Number.isNaN(Date.parse(entry.createdAt))
-        ? entry.createdAt
-        : new Date().toISOString();
-
-    await addBoostRule({
-      ...normalized,
-      id: crypto.randomUUID(),
-      siteKey,
-      createdAt,
-      pageUrl: isNonEmptyString(entry.pageUrl) ? entry.pageUrl : `https://${siteKey}/`,
-      pageTitle: isNonEmptyString(entry.pageTitle) ? entry.pageTitle : siteKey,
-    } as BoostRule);
-    addedCount += 1;
-  }
-
-  return { addedCount, skippedCount };
+    return {
+      rules: addedCount > 0 ? nextRules : null,
+      result: { success: true, addedCount, skippedCount },
+    };
+  });
 }
 
 async function listSiteSummaries(): Promise<SiteSummary[]> {
@@ -316,81 +234,77 @@ async function refreshTab(tabId: number | undefined): Promise<void> {
   await sendTabCommand(tabId, { type: "REFRESH_BOOSTS" });
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  void (async () => {
-      switch (message.type) {
-        case "ENTER_BOOST_MODE": {
-          const payload = getMessagePayload<{ tabId: number }>(message);
-          const success = await sendTabCommand(payload.tabId, {
-            type: "ENTER_BOOST_MODE",
-          });
-          sendResponse({
-            success,
-            error: success ? undefined : "Boost mode could not be started on this tab.",
-          });
-          return;
-        }
-        case "EXIT_BOOST_MODE": {
-          const payload = getMessagePayload<{ tabId: number }>(message);
-          const success = await sendTabCommand(payload.tabId, {
-            type: "EXIT_BOOST_MODE",
-          });
-          sendResponse({
-            success,
-            error: success ? undefined : "Boost mode could not be updated on this tab.",
-          });
-          return;
-        }
-      case "CREATE_BOOST": {
-        const payload = getMessagePayload<ContentToBackgroundMessage["payload"]>(message);
-        const pageUrl =
-          payload.pageUrl || sender.tab?.url || "https://unknown.local/";
-        const siteKey = getSiteKeyFromUrl(pageUrl);
-        const pageTitle = payload.pageTitle || sender.tab?.title || pageUrl;
-        const rule = buildRuleFromPayload(payload, siteKey, pageUrl, pageTitle);
-        const savedRule = await addBoostRule(rule);
-        sendResponse({ rule: savedRule });
-        return;
-      }
-      case "LIST_BOOSTS": {
-        const payload = getMessagePayload<PopupToBackgroundMessage["payload"]>(message);
-        const siteKey = "siteKey" in payload ? payload.siteKey : undefined;
-        const [siteRules, siteSummaries] = await Promise.all([
-          listBoostRules(siteKey),
-          listSiteSummaries(),
-        ]);
-        sendResponse({ siteRules, siteSummaries });
-        return;
-      }
-      case "RESTORE_BOOST": {
-        const payload = getMessagePayload<{ id: string; tabId?: number }>(message);
-        const removed = await removeBoostRule(payload.id);
-        await refreshTab(payload.tabId);
-        sendResponse({ removed });
-        return;
-      }
-      case "RESTORE_SITE_BOOSTS": {
-        const payload = getMessagePayload<{ siteKey: string; tabId?: number }>(message);
-        const removedCount = await removeSiteBoostRules(payload.siteKey);
-        await refreshTab(payload.tabId);
-        sendResponse({ removedCount });
-        return;
-      }
-      case "RESTORE_ALL_BOOSTS": {
-        const removedCount = await removeAllBoostRules();
-        sendResponse({ removedCount });
-        return;
-      }
-      case "IMPORT_BOOSTS": {
-        const payload = getMessagePayload<ImportBoostsPayload>(message);
-        const result = await importBoostRules(payload.rules);
-        sendResponse(result);
-        return;
-      }
-      default:
-        sendResponse({ success: false });
+async function handleMessage(
+  message: RuntimeMessage,
+  sender: chrome.runtime.MessageSender,
+): Promise<object> {
+  switch (message.type) {
+    case "ENTER_BOOST_MODE": {
+      const success = await sendTabCommand(message.payload.tabId, { type: "ENTER_BOOST_MODE" });
+      return {
+        success,
+        error: success ? undefined : "Boost mode could not be started on this tab.",
+      };
     }
-  })();
+    case "EXIT_BOOST_MODE": {
+      const success = await sendTabCommand(message.payload.tabId, { type: "EXIT_BOOST_MODE" });
+      return {
+        success,
+        error: success ? undefined : "Boost mode could not be updated on this tab.",
+      };
+    }
+    case "CREATE_BOOST": {
+      const { payload } = message;
+      // Trust the tab's real URL over whatever the page reported.
+      const pageUrl = sender.tab?.url || payload.pageUrl;
+      const pageTitle = sender.tab?.title || payload.pageTitle || pageUrl;
+      const rule = buildRuleFromPayload(payload, getSiteKeyFromUrl(pageUrl), pageUrl, pageTitle);
+      if (!rule) {
+        return { success: false, error: "That boost has an invalid value and was not saved." };
+      }
+      return { success: true, rule: await addBoostRule(rule) };
+    }
+    case "LIST_BOOSTS": {
+      const [siteRules, siteSummaries] = await Promise.all([
+        listBoostRules(message.payload.siteKey),
+        listSiteSummaries(),
+      ]);
+      return { success: true, siteRules, siteSummaries };
+    }
+    case "RESTORE_BOOST": {
+      const removed = await removeBoostRule(message.payload.id);
+      await refreshTab(message.payload.tabId);
+      return { success: true, removed };
+    }
+    case "RESTORE_SITE_BOOSTS": {
+      const removedCount = await removeSiteBoostRules(message.payload.siteKey);
+      await refreshTab(message.payload.tabId);
+      return { success: true, removedCount };
+    }
+    case "RESTORE_ALL_BOOSTS":
+      return { success: true, removedCount: await removeAllBoostRules() };
+    case "IMPORT_BOOSTS":
+      return importBoostRules(message.payload.rules);
+    default:
+      return { success: false, error: "Unknown message." };
+  }
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  rulesQueue = rulesQueue
+    .then(migrateLegacyRules)
+    .catch((error) => logWarning("Legacy rule migration failed.", error));
+});
+
+chrome.runtime.onMessage.addListener((message: RuntimeMessage, sender, sendResponse) => {
+  handleMessage(message, sender).then(sendResponse, (error: unknown) => {
+    // Always reply, otherwise the caller waits until the message port closes.
+    logWarning(`Handling ${message?.type} failed.`, error);
+    sendResponse({
+      success: false,
+      error: error instanceof Error ? error.message : "The extension hit an unexpected error.",
+    });
+  });
 
   return true;
 });
