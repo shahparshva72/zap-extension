@@ -2,20 +2,34 @@
 
 Chromium Manifest V3 extension for boosting webpages, inspired by Arc Browser's Boosts.
 Zap a stray element, recolor something (or the whole page), swap in a different font, or
-fix a label's text — all saved per-site so it stays boosted on future visits. Built with
-Codex
+fix a label's text — all saved per-site so it stays boosted on future visits.
 
-## Setup
+## Install
+
+1. Download the latest `zap-extension-v*.zip` from the
+   [Releases page](https://github.com/shahparshva72/zap-extension/releases/latest).
+2. Unzip it.
+3. Open `chrome://extensions` in Chrome, Arc, Edge, or Brave and turn on `Developer mode`.
+4. Click `Load unpacked` and select the unzipped folder (the one containing
+   `manifest.json`).
+5. Pin Zap from the extensions menu for easy access.
+
+Zap makes no network requests: boosts are stored only in your browser's local extension
+storage. It needs access to all `http`/`https` sites so saved boosts can re-apply
+whenever you revisit a page.
+
+## Build From Source
 
 1. Install dependencies with `npm install`.
-2. Build the extension with `npm run build`.
+2. Build the extension with `npm run build`, then load the `dist` folder as described
+   below.
 3. For active development, use `npm run dev` to rebuild on file changes.
 
 The content script is built separately (`vite.content.config.ts`) as one self-contained
 file, because content scripts can't load `import`s. It can import from `src/shared`
 like any other entry point.
 
-## Load The Extension
+## Load A Local Build
 
 1. Open `chrome://extensions` in Chrome, Arc, Edge, or Brave.
 2. Turn on `Developer mode`.
@@ -69,6 +83,8 @@ saved boost across every site:
   everywhere.
 - Export all saved boosts to a JSON file, or import a previously exported (or
   hand-written) JSON file to merge boosts back in.
+  Exports include the URL and title of each boosted page, so check a file before sharing
+  it.
 
 ## How it works
 
@@ -86,3 +102,18 @@ saved boost across every site:
   imported or hand-edited value can't inject arbitrary CSS.
 - Restore individual boosts, all current-site boosts, or everything everywhere from the
   popup or the `Manage all boosts` page.
+
+## Releasing
+
+1. Bump `version` in both `package.json` and `public/manifest.json` (they must match).
+2. Run `npm run release` to build and package `release/zap-extension-v<version>.zip`
+   locally, and check it loads with `Load unpacked`.
+3. Commit, then tag and push, e.g. `git tag v0.2.0 && git push origin v0.2.0`. The
+   `Release` GitHub Actions workflow builds the zip and publishes a GitHub Release with it
+   attached. The tag must match the version, or the workflow fails.
+
+The same zip can be uploaded to the Chrome Web Store.
+
+## License
+
+[MIT](LICENSE)

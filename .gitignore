@@ -1,5 +1,6 @@
 node_modules/
 dist/
+release/
 .DS_Store
 npm-debug.log*
 yarn-debug.log*
@@ -7,5 +8,6 @@ yarn-error.log*
 pnpm-debug.log*
 
 .agents/
+.claude/
 
 skills-lock.json
