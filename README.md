@@ -4,6 +4,8 @@ Chromium Manifest V3 extension for boosting webpages, inspired by Arc Browser's 
 Zap a stray element, recolor something (or the whole page), swap in a different font, or
 fix a label's text — all saved per-site so it stays boosted on future visits.
 
+https://github.com/user-attachments/assets/15de2619-3dcb-4ac9-b0a0-da9784b42ee0
+
 ## Install
 
 1. Download the latest `zap-extension-v*.zip` from the
