@@ -1,0 +1,12 @@
+{
+  "name": "zap-store-assets",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.mjs"
+  },
+  "devDependencies": {
+    "puppeteer": "25.12.0",
+    "sharp": "0.34.5"
+  }
+}

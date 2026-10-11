@@ -166,7 +166,7 @@ function renderList(): void {
 
   const totalCount = document.getElementById("total-count");
   if (totalCount) {
-    totalCount.textContent = pluralize(allRules.length, "saved");
+    totalCount.textContent = `${allRules.length} saved`;
   }
 
   if (allRules.length === 0) {

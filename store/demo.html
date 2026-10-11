@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fieldnotes — Zap demo</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #223c32; background: #f6f4ed; font-family: 'Helvetica Neue', sans-serif; }
+  header { height: 98px; margin: 0 48px; display: flex; align-items: center; gap: 36px; border-bottom: 1px solid #c9cfc3; }
+  .name { font-size: 29px; font-weight: 800; letter-spacing: -1.5px; }
+  nav { display: flex; gap: 28px; font-size: 13px; }
+  .edition { margin-left: auto; margin-right: 320px; font: 10px Menlo, monospace; letter-spacing: 1px; }
+  main { padding: 38px 48px; display: grid; grid-template-columns: 800px 1fr; gap: 40px; }
+  .eyebrow { font: 11px Menlo, monospace; text-transform: uppercase; letter-spacing: 2px; }
+  #story { padding: 36px; background: #e5ebdf; position: relative; overflow: hidden; }
+  h1 { max-width: 680px; margin: 28px 0 24px; font-size: 72px; font-weight: 700; line-height: 1.02; letter-spacing: -3.5px; white-space: pre-line; }
+  .intro { max-width: 560px; font-size: 18px; line-height: 1.6; margin: 0; }
+  .byline { margin-top: 34px; display: flex; gap: 14px; align-items: center; font: 11px Menlo, monospace; }
+  .avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid currentColor; }
+  .landscape { width: 100%; height: 132px; display: block; margin-top: 32px; }
+  aside { padding-top: 286px; }
+  #newsletter { padding: 26px; color: #f6f4ed; background: #223c32; }
+  #newsletter h2 { font-size: 28px; line-height: 1.1; letter-spacing: -1px; margin: 20px 0 14px; }
+  #newsletter p { font-size: 13px; line-height: 1.6; }
+  button { font: inherit; }
+  #newsletter button { width: 100%; border: 0; padding: 13px; background: #dee8bb; color: #223c32; font-size: 12px; font-weight: 700; }
+  .below { display: flex; justify-content: space-between; margin-top: 22px; font: 11px Menlo, monospace; }
+  footer { padding: 0 48px 24px; color: #617168; font: 10px Menlo, monospace; letter-spacing: 1px; }
+</style>
+<header><div class="name">fieldnotes.</div><nav><span>Stories</span><span>Places</span><span>Slow living</span></nav><div class="edition">VOL. 08 / AUTUMN</div></header>
+<main>
+  <section>
+    <article id="story">
+      <div class="eyebrow">The art of paying attention</div>
+      <h1 id="headline">A little further.
+A little slower.</h1>
+      <p class="intro" id="intro">Some days call for a different pace. Take the long way home, find a quiet corner, and leave a little room for the unexpected.</p>
+      <div class="byline"><span class="avatar">FN</span><span>THE FIELDNOTES JOURNAL</span><span>·</span><span>5 MIN READ</span></div>
+      <svg class="landscape" viewBox="0 0 728 168" preserveAspectRatio="none" aria-label="Illustrated rolling hills">
+        <rect width="728" height="168" fill="#c8d5bf"/>
+        <circle cx="582" cy="43" r="25" fill="#f6e9b7"/>
+        <path d="M0 130Q130 0 290 96T728 58V168H0Z" fill="#8da589"/>
+        <path d="M0 140Q210 48 410 138T728 102V168H0Z" fill="#526f59"/>
+        <path d="M270 168Q360 130 433 135T556 112" fill="none" stroke="#e7e7cd" stroke-width="9"/>
+      </svg>
+    </article>
+    <div class="below"><span>01 — FIND YOUR OWN PACE</span><span>MORE STORIES ↗</span></div>
+  </section>
+  <aside><div id="newsletter"><span class="eyebrow">One more thing</span><h2>Your inbox.<br>A little fuller.</h2><p>Weekly stories, reading lists, and a few things you probably don’t need.</p><button>Subscribe to everything</button></div></aside>
+</main>
+<footer>FICTIONAL SAMPLE WEBSITE · CREATED TO DEMONSTRATE ZAP</footer>
+</html>

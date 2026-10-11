@@ -116,6 +116,13 @@ saved boost across every site:
 
 The same zip can be uploaded to the Chrome Web Store.
 
+## Logo and store images
+
+The [asset guide](store/README.md) lists the logo SVGs, extension icons, promotional
+images, and five screenshots for the Chrome Web Store. Open
+[`brand/preview.html`](brand/preview.html) for a visual overview. The extension build
+automatically includes its PNG icons; store artwork stays outside the package.
+
 ## License
 
 [MIT](LICENSE)

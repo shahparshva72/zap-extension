@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="280" viewBox="0 0 440 280">
+  <rect width="440" height="280" fill="#ffd83d"/>
+  <path d="M6 3h16L12 12h8L3 23l4-8H2L12 6H5z" transform="translate(218 -61) scale(18)" fill="#17181a" opacity=".07"/>
+  <rect x="32" y="32" width="56" height="56" rx="14" fill="#17181a"/>
+  <path d="M6 3h16L12 12h8L3 23l4-8H2L12 6H5z" transform="translate(41 38) scale(1.65)" fill="#ffd83d"/>
+  <text x="29" y="185" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-size="112" font-weight="900" letter-spacing="-8" fill="#17181a">zap</text>
+  <path d="M34 207h372" stroke="#17181a" stroke-opacity=".25"/>
+  <text x="34" y="243" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-size="20" font-weight="500" letter-spacing="-.5" fill="#17181a">Your web. Your way.</text>
+</svg>

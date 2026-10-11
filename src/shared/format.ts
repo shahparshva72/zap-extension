@@ -7,7 +7,7 @@ export const TYPE_LABELS: Record<BoostType, string> = {
   text: "Text",
 };
 
-export const ZAP_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>`;
+export const ZAP_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h16L12 12h8L3 23l4-8H2L12 6H5z"/></svg>`;
 
 export function escapeHtml(value: string): string {
   return value

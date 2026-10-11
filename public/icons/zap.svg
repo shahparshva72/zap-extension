@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">Zap</title>
+  <rect x="16" y="16" width="96" height="96" rx="24" fill="#ffd83d"/>
+  <path d="M6 3h16L12 12h8L3 23l4-8H2L12 6H5z" transform="translate(28 25) scale(3)" fill="#17181a"/>
+</svg>

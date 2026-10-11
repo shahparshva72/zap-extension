@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zap — brand & store assets</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 56px; background: #17181a; color: #f6f4ed; font-family: 'Helvetica Neue', sans-serif; }
+  main { max-width: 1200px; margin: auto; }
+  header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid #444; padding-bottom: 24px; }
+  h1 { margin: 0; font-size: 56px; letter-spacing: -3px; }
+  header p, figcaption, .label { font: 11px Menlo, monospace; letter-spacing: 1px; text-transform: uppercase; }
+  header p { color: #ffd83d; }
+  .identity { display: grid; grid-template-columns: 1fr 1fr; margin: 32px 0; gap: 24px; }
+  .tile { min-height: 360px; display: grid; place-items: center; background: #f6f4ed; }
+  .tile.dark { background: #242528; }
+  .tile img { width: 280px; }
+  .tile.dark img { width: 150px; filter: invert(86%) sepia(61%) saturate(770%) hue-rotate(342deg); }
+  .label { margin: 16px 0 24px; color: #a6a6a2; }
+  figure { margin: 0; }
+  figure img { display: block; width: 100%; }
+  figcaption { padding: 15px 0 25px; color: #a6a6a2; }
+  .promos { display: grid; grid-template-columns: 440fr 700fr; gap: 24px; align-items: center; }
+  .screens { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  h2 { font-size: 30px; letter-spacing: -1px; margin: 48px 0 24px; }
+  a { color: #ffd83d; }
+  @media (max-width: 760px) { body { padding: 24px; } header { display: block; } .identity, .promos, .screens { grid-template-columns: 1fr; } }
+</style>
+<main>
+  <header><h1>zap.</h1><p>Your web. Your way.</p></header>
+  <div class="identity">
+    <figure><div class="tile"><img src="../public/icons/zap.svg" alt="Yellow Zap logo"></div><figcaption>Primary logo / SVG</figcaption></figure>
+    <figure><div class="tile dark"><img src="zap-mark.svg" alt="Single-color Zap mark"></div><figcaption>Solid mark / SVG</figcaption></figure>
+  </div>
+  <h2>Made to stand out.</h2>
+  <div class="promos">
+    <figure><img src="../store/promo-small.png" alt="Zap small promotional tile"><figcaption>Store tile / 440 × 280</figcaption></figure>
+    <figure><img src="../store/promo-marquee.png" alt="Your web. Your way. Zap marquee"><figcaption>Marquee / 1400 × 560</figcaption></figure>
+  </div>
+  <h2>The real thing, in action.</h2>
+  <div class="screens">
+    <figure><img src="../store/screenshot-01-zap.png" alt="Selecting a newsletter panel to remove"><figcaption>01 / Remove distractions</figcaption></figure>
+    <figure><img src="../store/screenshot-02-recolor.png" alt="Recoloring an article"><figcaption>02 / Change the palette</figcaption></figure>
+    <figure><img src="../store/screenshot-03-font.png" alt="Changing a heading font to Georgia"><figcaption>03 / Find your type</figcaption></figure>
+    <figure><img src="../store/screenshot-04-text.png" alt="Editing heading text"><figcaption>04 / Make it yours</figcaption></figure>
+    <figure><img src="../store/screenshot-05-manage.png" alt="Managing saved boosts"><figcaption>05 / Keep control</figcaption></figure>
+  </div>
+  <p class="label"><a href="../store/README.md">Asset guide</a> · SVG sources + upload-ready PNGs</p>
+</main>
+</html>

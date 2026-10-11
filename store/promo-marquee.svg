@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560">
+  <rect width="1400" height="560" fill="#17181a"/>
+  <path d="M930 0h470v560H670z" fill="#ffd83d"/>
+  <g fill="none" stroke="#17181a" opacity=".13" stroke-width="2">
+    <rect x="930" y="126" width="310" height="310" rx="76" transform="rotate(-12 1085 281)"/>
+    <rect x="900" y="96" width="370" height="370" rx="90" transform="rotate(-12 1085 281)"/>
+    <rect x="870" y="66" width="430" height="430" rx="104" transform="rotate(-12 1085 281)"/>
+  </g>
+  <path d="M6 3h16L12 12h8L3 23l4-8H2L12 6H5z" transform="translate(930 114) scale(14)" fill="#17181a"/>
+  <path d="M6 3h16L12 12h8L3 23l4-8H2L12 6H5z" transform="translate(65 49) scale(2.2)" fill="#ffd83d"/>
+  <text x="132" y="93" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-size="46" font-weight="800" letter-spacing="-3" fill="#f6f4ed">zap</text>
+  <text x="70" y="263" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-size="92" font-weight="700" letter-spacing="-5" fill="#f6f4ed">Your web.</text>
+  <text x="70" y="359" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-size="92" font-weight="700" letter-spacing="-5" fill="#ffd83d">Your way.</text>
+  <text x="75" y="462" font-family="Menlo,Consolas,monospace" font-size="15" letter-spacing="1" fill="#aeafab">REMOVE. RECOLOR. RESTYLE. REWRITE.</text>
+</svg>
