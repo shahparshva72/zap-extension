@@ -116,6 +116,12 @@ saved boost across every site:
 
 The same zip can be uploaded to the Chrome Web Store.
 
+## Privacy
+
+Read the [Zap privacy policy](https://github.com/shahparshva72/zap-extension/blob/main/PRIVACY.md)
+for details about local storage, webpage information, imports and exports, and
+deleting saved boosts. This public URL can be used in the Chrome Web Store listing.
+
 ## Logo and store images
 
 The [asset guide](store/README.md) lists the logo SVGs, extension icons, promotional

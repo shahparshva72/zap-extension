@@ -6,6 +6,9 @@ filled path, with no fonts, strokes, filters, or external resources.
 
 ## Upload these files
 
+Privacy policy URL for the dashboard:
+[Zap Privacy Policy](https://github.com/shahparshva72/zap-extension/blob/main/PRIVACY.md).
+
 | Asset | Size | File |
 | --- | --- | --- |
 | Store icon | 128 × 128 | [icon-128.png](../public/icons/icon-128.png) |
