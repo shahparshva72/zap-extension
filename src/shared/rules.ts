@@ -73,9 +73,59 @@ export function isEditableBoost(rule: BoostRule): boolean {
   return EDITABLE_KEYS[rule.type].length > 0;
 }
 
-export function isSafeSelector(value: unknown): value is string {
-  return isNonEmptyString(value) && value.length <= 1000 && !/[{};]/.test(value);
+/**
+ * True when every string, bracket and escape in a selector is closed. `querySelector`
+ * accepts `:not(a` or `[title="x` because the parser closes them at the end of input, but
+ * inside a stylesheet the open bracket, string or comment keeps going and swallows every
+ * rule after it.
+ */
+function isBalancedSelector(selector: string): boolean {
+  const closers: string[] = [];
+  let quote = "";
+
+  for (let index = 0; index < selector.length; index += 1) {
+    const char = selector[index];
+    if (char === "\\") {
+      if (index === selector.length - 1) {
+        return false;
+      }
+      index += 1;
+    } else if (quote) {
+      if (char === "\n") {
+        return false;
+      }
+      if (char === quote) {
+        quote = "";
+      }
+    } else if (char === '"' || char === "'") {
+      quote = char;
+    } else if (char === "(" || char === "[") {
+      closers.push(char === "(" ? ")" : "]");
+    } else if (char === ")" || char === "]") {
+      if (closers.pop() !== char) {
+        return false;
+      }
+    } else if (char === "/" && selector[index + 1] === "*") {
+      return false;
+    }
+  }
+
+  return !quote && closers.length === 0;
 }
+
+export function isSafeSelector(value: unknown): value is string {
+  return (
+    isNonEmptyString(value) &&
+    value.length <= 1000 &&
+    !/[{};]/.test(value) &&
+    isBalancedSelector(value)
+  );
+}
+
+const MAX_LABEL_LENGTH = 200;
+const MAX_TITLE_LENGTH = 300;
+const MAX_URL_LENGTH = 2000;
+const MAX_TEXT_LENGTH = 10000;
 
 function optionalCssValue(value: unknown): string | undefined {
   return isSafeCssValue(value) ? value : undefined;
@@ -85,7 +135,10 @@ function optionalCssValue(value: unknown): string | undefined {
  * Validates a rule read from storage. Returns null for anything malformed so a single
  * corrupted entry can't break the popup, the manage page, or the injected stylesheet.
  */
-export function normalizeStoredRule(entry: unknown): BoostRule | null {
+export function normalizeStoredRule(
+  entry: unknown,
+  { enforceLimits = false }: { enforceLimits?: boolean } = {},
+): BoostRule | null {
   if (typeof entry !== "object" || entry === null) {
     return null;
   }
@@ -105,10 +158,16 @@ export function normalizeStoredRule(entry: unknown): BoostRule | null {
     id: record.id,
     siteKey: record.siteKey,
     selector: record.selector,
-    label: record.label,
+    label: record.label.slice(0, MAX_LABEL_LENGTH),
     createdAt: record.createdAt,
-    pageUrl: typeof record.pageUrl === "string" ? record.pageUrl : `https://${record.siteKey}/`,
-    pageTitle: typeof record.pageTitle === "string" ? record.pageTitle : record.siteKey,
+    pageUrl: (typeof record.pageUrl === "string"
+      ? record.pageUrl
+      : `https://${record.siteKey}/`
+    ).slice(0, MAX_URL_LENGTH),
+    pageTitle: (typeof record.pageTitle === "string" ? record.pageTitle : record.siteKey).slice(
+      0,
+      MAX_TITLE_LENGTH,
+    ),
     ...(record.disabled === true ? { disabled: true } : {}),
   };
   const scope = record.scope === "page" ? "page" : "element";
@@ -129,15 +188,26 @@ export function normalizeStoredRule(entry: unknown): BoostRule | null {
       return isSafeCssValue(record.fontFamily)
         ? { ...base, type: "font", scope, fontFamily: record.fontFamily }
         : null;
-    case "text":
+    case "text": {
+      const originalText = typeof record.originalText === "string" ? record.originalText : "";
+      // Only new writes are held to the limit, so a long text boost saved by an earlier
+      // version keeps working.
+      if (
+        enforceLimits &&
+        isNonEmptyString(record.newText) &&
+        (record.newText.length > MAX_TEXT_LENGTH || originalText.length > MAX_TEXT_LENGTH)
+      ) {
+        return null;
+      }
       return isNonEmptyString(record.newText)
         ? {
             ...base,
             type: "text",
-            originalText: typeof record.originalText === "string" ? record.originalText : "",
+            originalText,
             newText: record.newText,
           }
         : null;
+    }
     case "style": {
       const values = normalizeStyleValues(record, scope);
       return values ? { ...base, type: "style", scope, ...values } : null;

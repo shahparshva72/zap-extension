@@ -54,6 +54,7 @@ let isBusy = false;
 let editingId: string | null = null;
 // Set when storage changes while an editor is open; the list reloads once it closes.
 let pendingReload = false;
+let renderedSnapshot = "";
 
 async function sendRuntimeMessage<TResponse extends CommandResult>(
   message: object,
@@ -495,7 +496,7 @@ function mountEditor(rule: BoostRule, li: HTMLLIElement): void {
       });
       editingId = null;
       pendingReload = false;
-      await loadRules();
+      await loadRules(true);
       setStatusMessage("Saved changes.");
     } catch (error) {
       reportError(error, "That boost could not be saved.");
@@ -514,7 +515,7 @@ function dismissEditor(): void {
   editingId = null;
   if (pendingReload) {
     pendingReload = false;
-    void loadRules().catch((error) => reportError(error, "Saved boosts could not be loaded."));
+    void loadRules(true).catch((error) => reportError(error, "Saved boosts could not be loaded."));
     return;
   }
   if (hadEditor) {
@@ -684,11 +685,18 @@ function attachRowHandlers(): void {
   });
 }
 
-async function loadRules(): Promise<void> {
+async function loadRules(force = false): Promise<void> {
   const data = await sendRuntimeMessage<ListBoostsResponse>({
     type: "LIST_BOOSTS",
     payload: {},
   });
+  // An action reloads the list itself and then storage reports the same change; the
+  // second pass would rebuild every row for nothing.
+  const snapshot = JSON.stringify([data.siteRules, data.pausedSites]);
+  if (snapshot === renderedSnapshot && !force) {
+    return;
+  }
+  renderedSnapshot = snapshot;
   allRules = data.siteRules;
   pausedSites = data.pausedSites;
   renderList();
