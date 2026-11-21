@@ -1,6 +1,6 @@
 import "../popup/styles.css";
 
-import { describeBoostRule, escapeHtml, formatDate, TYPE_LABELS, ZAP_ICON_SVG } from "../shared/format";
+import { boostRowCopyMarkup, escapeHtml, formatDate, ZAP_ICON_SVG } from "../shared/format";
 import { getSiteKeyFromUrl, isEditableBoost } from "../shared/rules";
 import type {
   ActiveTabContext,
@@ -46,7 +46,7 @@ function createSiteSummaryMarkup(summaries: SiteSummary[]): string {
     .map(
       (summary) => `
         <li class="site-row">
-          <span class="domain">${escapeHtml(summary.siteKey)}</span>
+          <span class="domain" title="${escapeHtml(summary.siteKey)}">${escapeHtml(summary.siteKey)}</span>
           <span class="meta">${summary.count} · ${formatDate(summary.latestCreatedAt)}</span>
         </li>
       `,
@@ -62,8 +62,7 @@ function createBoostItemMarkup(rule: BoostRule): string {
       <input type="checkbox" class="boost-switch" data-toggle-id="${rule.id}" aria-label="Boost on"
         title="Turn this boost on or off" ${rule.disabled ? "" : "checked"} />
       <div class="row-copy">
-        <p class="row-label"><span class="type-badge">${TYPE_LABELS[rule.type]}</span>${escapeHtml(describeBoostRule(rule))}</p>
-        <p class="row-meta">${formatDate(rule.createdAt)} · <code>${escapeHtml(rule.selector)}</code></p>
+        ${boostRowCopyMarkup(rule)}
       </div>
       ${
         isEditableBoost(rule)

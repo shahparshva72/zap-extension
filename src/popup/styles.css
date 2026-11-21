@@ -29,7 +29,11 @@ body {
   text-transform: uppercase;
   cursor: pointer;
   border-right: 1px solid var(--border);
-  transition: background 100ms ease;
+  transition: background 100ms ease, transform 160ms var(--ease-out);
+}
+
+.mode-button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .mode-button:last-child {

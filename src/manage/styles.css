@@ -47,6 +47,11 @@ body {
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
+  transition: transform 160ms var(--ease-out);
+}
+
+.toolbar-button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .toolbar-button:hover:not(:disabled) {
@@ -94,9 +99,32 @@ body {
   margin-top: 6px;
   padding: 10px 4px 4px;
   border-top: 1px solid var(--border);
+  min-width: 0;
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+}
+
+/* The editor pushes the rows below it down; fading it in softens that jump. */
+@starting-style {
+  .boost-editor {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boost-editor {
+    transition: opacity 180ms var(--ease-out);
+  }
+
+  @starting-style {
+    .boost-editor {
+      transform: none;
+    }
+  }
 }
 
 .boost-editor-head {
+  overflow-wrap: anywhere;
   font-size: 10px;
   color: var(--ink-muted);
   letter-spacing: 0.04em;
@@ -104,6 +132,7 @@ body {
 
 .edit-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   font-size: 11px;

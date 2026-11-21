@@ -2,6 +2,7 @@ import "./styles.css";
 
 import { FONT_PRESETS } from "../shared/fonts";
 import {
+  boostRowCopyMarkup,
   describeBoostRule,
   escapeHtml,
   formatDate,
@@ -178,8 +179,7 @@ function createRuleRowMarkup(rule: BoostRule): string {
       <input type="checkbox" class="boost-switch" data-toggle-id="${rule.id}" aria-label="Boost on"
         title="Turn this boost on or off" ${rule.disabled ? "" : "checked"} />
       <div class="row-copy">
-        <p class="row-label"><span class="type-badge">${TYPE_LABELS[rule.type]}</span>${escapeHtml(describeBoostRule(rule))}</p>
-        <p class="row-meta">${formatDate(rule.createdAt)} · <code>${escapeHtml(rule.selector)}</code></p>
+        ${boostRowCopyMarkup(rule)}
       </div>
       ${editButton}
       <button class="ghost-button" type="button" data-restore-id="${rule.id}">Restore</button>
@@ -192,7 +192,7 @@ function createSiteGroupMarkup(siteKey: string, rules: BoostRule[]): string {
   return `
     <section class="site-group">
       <div class="section-head">
-        <span class="section-title">${escapeHtml(siteKey)} <span class="count">${rules.length}</span>${
+        <span class="section-title"><span class="site-name" title="${escapeHtml(siteKey)}">${escapeHtml(siteKey)}</span> <span class="count">${rules.length}</span>${
           paused ? ` <span class="type-badge">Paused</span>` : ""
         }</span>
         <span class="section-actions">
@@ -786,10 +786,16 @@ function render(): void {
   `;
 
   const searchInput = document.getElementById("search-input") as HTMLInputElement;
+  // Re-rendering a few hundred rows on every keystroke makes typing lag, so wait for a
+  // short pause instead.
+  let searchTimer: number | undefined;
   searchInput.addEventListener("input", () => {
-    searchQuery = searchInput.value;
-    dismissEditor();
-    renderList();
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      searchQuery = searchInput.value;
+      dismissEditor();
+      renderList();
+    }, 120);
   });
 
   const typeSelect = document.getElementById("type-filter") as HTMLSelectElement;

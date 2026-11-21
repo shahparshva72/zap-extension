@@ -1,0 +1,247 @@
+{
+  "rules": [
+    {
+      "siteKey": "localhost",
+      "type": "css",
+      "selector": "html",
+      "label": "Custom CSS",
+      "css": ".promo-banner-0 > .inner[data-variant=\"experiment-0\"] {\n  display: none !important;\n}\n.promo-banner-1 > .inner[data-variant=\"experiment-1\"] {\n  display: none !important;\n}\n.promo-banner-2 > .inner[data-variant=\"experiment-2\"] {\n  display: none !important;\n}\n.promo-banner-3 > .inner[data-variant=\"experiment-3\"] {\n  display: none !important;\n}\n.promo-banner-4 > .inner[data-variant=\"experiment-4\"] {\n  display: none !important;\n}\n.promo-banner-5 > .inner[data-variant=\"experiment-5\"] {\n  display: none !important;\n}\n.promo-banner-6 > .inner[data-variant=\"experiment-6\"] {\n  display: none !important;\n}\n.promo-banner-7 > .inner[data-variant=\"experiment-7\"] {\n  display: none !important;\n}\n.promo-banner-8 > .inner[data-variant=\"experiment-8\"] {\n  display: none !important;\n}\n.promo-banner-9 > .inner[data-variant=\"experiment-9\"] {\n  display: none !important;\n}\n.promo-banner-10 > .inner[data-variant=\"experiment-10\"] {\n  display: none !important;\n}\n.promo-banner-11 > .inner[data-variant=\"experiment-11\"] {\n  display: none !important;\n}\n.promo-banner-12 > .inner[data-variant=\"experiment-12\"] {\n  display: none !important;\n}\n.promo-banner-13 > .inner[data-variant=\"experiment-13\"] {\n  display: none !important;\n}\n.promo-banner-14 > .inner[data-variant=\"experiment-14\"] {\n  display: none !important;\n}\n.promo-banner-15 > .inner[data-variant=\"experiment-15\"] {\n  display: none !important;\n}\n.promo-banner-16 > .inner[data-variant=\"experiment-16\"] {\n  display: none !important;\n}\n.promo-banner-17 > .inner[data-variant=\"experiment-17\"] {\n  display: none !important;\n}\n.promo-banner-18 > .inner[data-variant=\"experiment-18\"] {\n  display: none !important;\n}\n.promo-banner-19 > .inner[data-variant=\"experiment-19\"] {\n  display: none !important;\n}\n.promo-banner-20 > .inner[data-variant=\"experiment-20\"] {\n  display: none !important;\n}\n.promo-banner-21 > .inner[data-variant=\"experiment-21\"] {\n  display: none !important;\n}\n.promo-banner-22 > .inner[data-variant=\"experiment-22\"] {\n  display: none !important;\n}\n.promo-banner-23 > .inner[data-variant=\"experiment-23\"] {\n  display: none !important;\n}\n.promo-banner-24 > .inner[data-variant=\"experiment-24\"] {\n  display: none !important;\n}\n.promo-banner-25 > .inner[data-variant=\"experiment-25\"] {\n  display: none !important;\n}\n.promo-banner-26 > .inner[data-variant=\"experiment-26\"] {\n  display: none !important;\n}\n.promo-banner-27 > .inner[data-variant=\"experiment-27\"] {\n  display: none !important;\n}\n.promo-banner-28 > .inner[data-variant=\"experiment-28\"] {\n  display: none !important;\n}\n.promo-banner-29 > .inner[data-variant=\"experiment-29\"] {\n  display: none !important;\n}\n.promo-banner-30 > .inner[data-variant=\"experiment-30\"] {\n  display: none !important;\n}\n.promo-banner-31 > .inner[data-variant=\"experiment-31\"] {\n  display: none !important;\n}\n.promo-banner-32 > .inner[data-variant=\"experiment-32\"] {\n  display: none !important;\n}\n.promo-banner-33 > .inner[data-variant=\"experiment-33\"] {\n  display: none !important;\n}\n.promo-banner-34 > .inner[data-variant=\"experiment-34\"] {\n  display: none !important;\n}\n.promo-banner-35 > .inner[data-variant=\"experiment-35\"] {\n  display: none !important;\n}\n.promo-banner-36 > .inner[data-variant=\"experiment-36\"] {\n  display: none !important;\n}\n.promo-banner-37 > .inner[data-variant=\"experiment-37\"] {\n  display: none !important;\n}\n.promo-banner-38 > .inner[data-variant=\"experiment-38\"] {\n  display: none !important;\n}\n.promo-banner-39 > .inner[data-variant=\"experiment-39\"] {\n  display: none !important;\n}\n.promo-banner-40 > .inner[data-variant=\"experiment-40\"] {\n  display: none !important;\n}\n.promo-banner-41 > .inner[data-variant=\"experiment-41\"] {\n  display: none !important;\n}\n.promo-banner-42 > .inner[data-variant=\"experiment-42\"] {\n  display: none !important;\n}\n.promo-banner-43 > .inner[data-variant=\"experiment-43\"] {\n  display: none !important;\n}\n.promo-banner-44 > .inner[data-variant=\"experiment-44\"] {\n  display: none !important;\n}\n.promo-banner-45 > .inner[data-variant=\"experiment-45\"] {\n  display: none !important;\n}\n.promo-banner-46 > .inner[data-variant=\"experiment-46\"] {\n  display: none !important;\n}\n.promo-banner-47 > .inner[data-variant=\"experiment-47\"] {\n  display: none !important;\n}\n.promo-banner-48 > .inner[data-variant=\"experiment-48\"] {\n  display: none !important;\n}\n.promo-banner-49 > .inner[data-variant=\"experiment-49\"] {\n  display: none !important;\n}\n.promo-banner-50 > .inner[data-variant=\"experiment-50\"] {\n  display: none !important;\n}\n.promo-banner-51 > .inner[data-variant=\"experiment-51\"] {\n  display: none !important;\n}\n.promo-banner-52 > .inner[data-variant=\"experiment-52\"] {\n  display: none !important;\n}\n.promo-banner-53 > .inner[data-variant=\"experiment-53\"] {\n  display: none !important;\n}\n.promo-banner-54 > .inner[data-variant=\"experiment-54\"] {\n  display: none !important;\n}\n.promo-banner-55 > .inner[data-variant=\"experiment-55\"] {\n  display: none !important;\n}\n.promo-banner-56 > .inner[data-variant=\"experiment-56\"] {\n  display: none !important;\n}\n.promo-banner-57 > .inner[data-variant=\"experiment-57\"] {\n  display: none !important;\n}\n.promo-banner-58 > .inner[data-variant=\"experiment-58\"] {\n  display: none !important;\n}\n.promo-banner-59 > .inner[data-variant=\"experiment-59\"] {\n  display: none !important;\n}\n.promo-banner-60 > .inner[data-variant=\"experiment-60\"] {\n  display: none !important;\n}\n.promo-banner-61 > .inner[data-variant=\"experiment-61\"] {\n  display: none !important;\n}\n.promo-banner-62 > .inner[data-variant=\"experiment-62\"] {\n  display: none !important;\n}\n.promo-banner-63 > .inner[data-variant=\"experiment-63\"] {\n  display: none !important;\n}\n.promo-banner-64 > .inner[data-variant=\"experiment-64\"] {\n  display: none !important;\n}\n.promo-banner-65 > .inner[data-variant=\"experiment-65\"] {\n  display: none !important;\n}\n.promo-banner-66 > .inner[data-variant=\"experiment-66\"] {\n  display: none !important;\n}\n.promo-banner-67 > .inner[data-variant=\"experiment-67\"] {\n  display: none !important;\n}\n.promo-banner-68 > .inner[data-variant=\"experiment-68\"] {\n  display: none !important;\n}\n.promo-banner-69 > .inner[data-variant=\"experiment-69\"] {\n  display: none !important;\n}\n.promo-banner-70 > .inner[data-variant=\"experiment-70\"] {\n  display: none !important;\n}\n.promo-banner-71 > .inner[data-variant=\"experiment-71\"] {\n  display: none !important;\n}\n.promo-banner-72 > .inner[data-variant=\"experiment-72\"] {\n  display: none !important;\n}\n.promo-banner-73 > .inner[data-variant=\"experiment-73\"] {\n  display: none !important;\n}\n.promo-banner-74 > .inner[data-variant=\"experiment-74\"] {\n  display: none !important;\n}\n.promo-banner-75 > .inner[data-variant=\"experiment-75\"] {\n  display: none !important;\n}\n.promo-banner-76 > .inner[data-variant=\"experiment-76\"] {\n  display: none !important;\n}\n.promo-banner-77 > .inner[data-variant=\"experiment-77\"] {\n  display: none !important;\n}\n.promo-banner-78 > .inner[data-variant=\"experiment-78\"] {\n  display: none !important;\n}\n.promo-banner-79 > .inner[data-variant=\"experiment-79\"] {\n  display: none !important;\n}\n.promo-banner-80 > .inner[data-variant=\"experiment-80\"] {\n  display: none !important;\n}\n.promo-banner-81 > .inner[data-variant=\"experiment-81\"] {\n  display: none !important;\n}\n.promo-banner-82 > .inner[data-variant=\"experiment-82\"] {\n  display: none !important;\n}\n.promo-banner-83 > .inner[data-variant=\"experiment-83\"] {\n  display: none !important;\n}\n.promo-banner-84 > .inner[data-variant=\"experiment-84\"] {\n  display: none !important;\n}\n.promo-banner-85 > .inner[data-variant=\"experiment-85\"] {\n  display: none !important;\n}\n.promo-banner-86 > .inner[data-variant=\"experiment-86\"] {\n  display: none !important;\n}\n.promo-banner-87 > .inner[data-variant=\"experiment-87\"] {\n  display: none !important;\n}\n.promo-banner-88 > .inner[data-variant=\"experiment-88\"] {\n  display: none !important;\n}\n.promo-banner-89 > .inner[data-variant=\"experiment-89\"] {\n  display: none !important;\n}\n.promo-banner-90 > .inner[data-variant=\"experiment-90\"] {\n  display: none !important;\n}\n.promo-banner-91 > .inner[data-variant=\"experiment-91\"] {\n  display: none !important;\n}\n.promo-banner-92 > .inner[data-variant=\"experiment-92\"] {\n  display: none !important;\n}\n.promo-banner-93 > .inner[data-variant=\"experiment-93\"] {\n  display: none !important;\n}\n.promo-banner-94 > .inner[data-variant=\"experiment-94\"] {\n  display: none !important;\n}\n.promo-banner-95 > .inner[data-variant=\"experiment-95\"] {\n  display: none !important;\n}\n.promo-banner-96 > .inner[data-variant=\"experiment-96\"] {\n  display: none !important;\n}\n.promo-banner-97 > .inner[data-variant=\"experiment-97\"] {\n  display: none !important;\n}\n.promo-banner-98 > .inner[data-variant=\"experiment-98\"] {\n  display: none !important;\n}\n.promo-banner-99 > .inner[data-variant=\"experiment-99\"] {\n  display: none !important;\n}\n.promo-banner-100 > .inner[data-variant=\"experiment-100\"] {\n  display: none !important;\n}\n.promo-banner-101 > .inner[data-variant=\"experiment-101\"] {\n  display: none !important;\n}\n.promo-banner-102 > .inner[data-variant=\"experiment-102\"] {\n  display: none !important;\n}\n.promo-banner-103 > .inner[data-variant=\"experiment-103\"] {\n  display: none !important;\n}\n.promo-banner-104 > .inner[data-variant=\"experiment-104\"] {\n  display: none !important;\n}\n.promo-banner-105 > .inner[data-variant=\"experiment-105\"] {\n  display: none !important;\n}\n.promo-banner-106 > .inner[data-variant=\"experiment-106\"] {\n  display: none !important;\n}\n.promo-banner-107 > .inner[data-variant=\"experiment-107\"] {\n  display: none !important;\n}\n.promo-banner-108 > .inner[data-variant=\"experiment-108\"] {\n  display: none !important;\n}\n.promo-banner-109 > .inner[data-variant=\"experiment-109\"] {\n  display: none !important;\n}\n.promo-banner-110 > .inner[data-variant=\"experiment-110\"] {\n  display: none !important;\n}\n.promo-banner-111 > .inner[data-variant=\"experiment-111\"] {\n  display: none !important;\n}\n.promo-banner-112 > .inner[data-variant=\"experiment-112\"] {\n  display: none !important;\n}\n.promo-banner-113 > .inner[data-variant=\"experiment-113\"] {\n  display: none !important;\n}\n.promo-banner-114 > .inner[data-variant=\"experiment-114\"] {\n  display: none !important;\n}\n.promo-banner-115 > .inner[data-variant=\"experiment-115\"] {\n  display: none !important;\n}\n.promo-banner-116 > .inner[data-variant=\"experiment-116\"] {\n  display: none !important;\n}\n.promo-banner-117 > .inner[data-variant=\"experiment-117\"] {\n  display: none !important;\n}\n.promo-banner-118 > .inner[data-variant=\"experiment-118\"] {\n  display: none !important;\n}\n.promo-banner-119 > .inner[data-variant=\"experiment-119\"] {\n  display: none !important;\n}"
+    },
+    {
+      "siteKey": "localhost",
+      "type": "style",
+      "scope": "element",
+      "selector": "body > div:nth-of-type(3) > main > div:nth-of-type(2) > section:nth-of-type(4) > div > ul > li:nth-of-type(17) > a > span:nth-of-type(2)",
+      "label": "Benachrichtigungseinstellungen und Datenschutzoptionen verwalten und prüfen",
+      "fontSize": 96,
+      "fontWeight": 900,
+      "lineHeight": 2.9,
+      "letterSpacing": -1.5,
+      "padding": 64,
+      "borderRadius": 48,
+      "opacity": 0.15,
+      "textAlign": "justify"
+    },
+    {
+      "siteKey": "localhost",
+      "type": "style",
+      "scope": "page",
+      "selector": "html",
+      "label": "Whole page",
+      "fontWeight": 300,
+      "lineHeight": 1.7,
+      "letterSpacing": 0.5,
+      "textAlign": "left"
+    },
+    {
+      "siteKey": "localhost",
+      "type": "text",
+      "selector": "[data-testid=\"workspace-switcher-dropdown-trigger-button\"]",
+      "label": "Upgrade",
+      "originalText": "Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation.",
+      "newText": "Line one\nLine two\nUpgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. "
+    },
+    {
+      "siteKey": "localhost",
+      "type": "text",
+      "selector": "#a",
+      "label": "J",
+      "originalText": "J",
+      "newText": "👩🏽‍💻"
+    },
+    {
+      "siteKey": "localhost",
+      "type": "font",
+      "scope": "element",
+      "selector": "h1.hero-title",
+      "label": "王秀英のプロフィール設定とアカウント情報の確認",
+      "fontFamily": "'Söhne Breit Kräftig', 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'Noto Sans CJK JP', 'Apple Color Emoji', 'Segoe UI Emoji', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif"
+    },
+    {
+      "siteKey": "localhost",
+      "type": "font",
+      "scope": "page",
+      "selector": "html",
+      "label": "Whole page",
+      "fontFamily": "Georgia, serif",
+      "disabled": true
+    },
+    {
+      "siteKey": "localhost",
+      "type": "recolor",
+      "scope": "element",
+      "selector": "nav > a:nth-of-type(4)",
+      "label": "نور الهدى عبد الرحمن — إعدادات الحساب",
+      "textColor": "color-mix(in oklab, rebeccapurple 62%, lightgoldenrodyellow)",
+      "backgroundColor": "rgba(255, 255, 255, 0.87)"
+    },
+    {
+      "siteKey": "localhost",
+      "type": "recolor",
+      "scope": "page",
+      "selector": "html",
+      "label": "Whole page",
+      "backgroundColor": "#0b0b0c"
+    },
+    {
+      "siteKey": "localhost",
+      "type": "remove",
+      "selector": "body > div:nth-of-type(3) > main > div:nth-of-type(2) > section:nth-of-type(4) > div > ul > li:nth-of-type(18) > a > span:nth-of-type(2)",
+      "label": "<script>alert(1)</script> &amp; **bold**"
+    },
+    {
+      "siteKey": "localhost",
+      "type": "remove",
+      "selector": "#x",
+      "label": "",
+      "disabled": true
+    },
+    {
+      "siteKey": "localhost",
+      "type": "remove",
+      "selector": "div.cookie-consent-banner-wrapper.is-visible.has-backdrop",
+      "label": "🦊 We value your privacy — Q3 Board Deck FINAL (revised) v12 [approved by legal].pdf"
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "css",
+      "selector": "html",
+      "label": "Custom CSS",
+      "css": ".promo-banner-0 > .inner[data-variant=\"experiment-0\"] {\n  display: none !important;\n}\n.promo-banner-1 > .inner[data-variant=\"experiment-1\"] {\n  display: none !important;\n}\n.promo-banner-2 > .inner[data-variant=\"experiment-2\"] {\n  display: none !important;\n}\n.promo-banner-3 > .inner[data-variant=\"experiment-3\"] {\n  display: none !important;\n}\n.promo-banner-4 > .inner[data-variant=\"experiment-4\"] {\n  display: none !important;\n}\n.promo-banner-5 > .inner[data-variant=\"experiment-5\"] {\n  display: none !important;\n}\n.promo-banner-6 > .inner[data-variant=\"experiment-6\"] {\n  display: none !important;\n}\n.promo-banner-7 > .inner[data-variant=\"experiment-7\"] {\n  display: none !important;\n}\n.promo-banner-8 > .inner[data-variant=\"experiment-8\"] {\n  display: none !important;\n}\n.promo-banner-9 > .inner[data-variant=\"experiment-9\"] {\n  display: none !important;\n}\n.promo-banner-10 > .inner[data-variant=\"experiment-10\"] {\n  display: none !important;\n}\n.promo-banner-11 > .inner[data-variant=\"experiment-11\"] {\n  display: none !important;\n}\n.promo-banner-12 > .inner[data-variant=\"experiment-12\"] {\n  display: none !important;\n}\n.promo-banner-13 > .inner[data-variant=\"experiment-13\"] {\n  display: none !important;\n}\n.promo-banner-14 > .inner[data-variant=\"experiment-14\"] {\n  display: none !important;\n}\n.promo-banner-15 > .inner[data-variant=\"experiment-15\"] {\n  display: none !important;\n}\n.promo-banner-16 > .inner[data-variant=\"experiment-16\"] {\n  display: none !important;\n}\n.promo-banner-17 > .inner[data-variant=\"experiment-17\"] {\n  display: none !important;\n}\n.promo-banner-18 > .inner[data-variant=\"experiment-18\"] {\n  display: none !important;\n}\n.promo-banner-19 > .inner[data-variant=\"experiment-19\"] {\n  display: none !important;\n}\n.promo-banner-20 > .inner[data-variant=\"experiment-20\"] {\n  display: none !important;\n}\n.promo-banner-21 > .inner[data-variant=\"experiment-21\"] {\n  display: none !important;\n}\n.promo-banner-22 > .inner[data-variant=\"experiment-22\"] {\n  display: none !important;\n}\n.promo-banner-23 > .inner[data-variant=\"experiment-23\"] {\n  display: none !important;\n}\n.promo-banner-24 > .inner[data-variant=\"experiment-24\"] {\n  display: none !important;\n}\n.promo-banner-25 > .inner[data-variant=\"experiment-25\"] {\n  display: none !important;\n}\n.promo-banner-26 > .inner[data-variant=\"experiment-26\"] {\n  display: none !important;\n}\n.promo-banner-27 > .inner[data-variant=\"experiment-27\"] {\n  display: none !important;\n}\n.promo-banner-28 > .inner[data-variant=\"experiment-28\"] {\n  display: none !important;\n}\n.promo-banner-29 > .inner[data-variant=\"experiment-29\"] {\n  display: none !important;\n}\n.promo-banner-30 > .inner[data-variant=\"experiment-30\"] {\n  display: none !important;\n}\n.promo-banner-31 > .inner[data-variant=\"experiment-31\"] {\n  display: none !important;\n}\n.promo-banner-32 > .inner[data-variant=\"experiment-32\"] {\n  display: none !important;\n}\n.promo-banner-33 > .inner[data-variant=\"experiment-33\"] {\n  display: none !important;\n}\n.promo-banner-34 > .inner[data-variant=\"experiment-34\"] {\n  display: none !important;\n}\n.promo-banner-35 > .inner[data-variant=\"experiment-35\"] {\n  display: none !important;\n}\n.promo-banner-36 > .inner[data-variant=\"experiment-36\"] {\n  display: none !important;\n}\n.promo-banner-37 > .inner[data-variant=\"experiment-37\"] {\n  display: none !important;\n}\n.promo-banner-38 > .inner[data-variant=\"experiment-38\"] {\n  display: none !important;\n}\n.promo-banner-39 > .inner[data-variant=\"experiment-39\"] {\n  display: none !important;\n}\n.promo-banner-40 > .inner[data-variant=\"experiment-40\"] {\n  display: none !important;\n}\n.promo-banner-41 > .inner[data-variant=\"experiment-41\"] {\n  display: none !important;\n}\n.promo-banner-42 > .inner[data-variant=\"experiment-42\"] {\n  display: none !important;\n}\n.promo-banner-43 > .inner[data-variant=\"experiment-43\"] {\n  display: none !important;\n}\n.promo-banner-44 > .inner[data-variant=\"experiment-44\"] {\n  display: none !important;\n}\n.promo-banner-45 > .inner[data-variant=\"experiment-45\"] {\n  display: none !important;\n}\n.promo-banner-46 > .inner[data-variant=\"experiment-46\"] {\n  display: none !important;\n}\n.promo-banner-47 > .inner[data-variant=\"experiment-47\"] {\n  display: none !important;\n}\n.promo-banner-48 > .inner[data-variant=\"experiment-48\"] {\n  display: none !important;\n}\n.promo-banner-49 > .inner[data-variant=\"experiment-49\"] {\n  display: none !important;\n}\n.promo-banner-50 > .inner[data-variant=\"experiment-50\"] {\n  display: none !important;\n}\n.promo-banner-51 > .inner[data-variant=\"experiment-51\"] {\n  display: none !important;\n}\n.promo-banner-52 > .inner[data-variant=\"experiment-52\"] {\n  display: none !important;\n}\n.promo-banner-53 > .inner[data-variant=\"experiment-53\"] {\n  display: none !important;\n}\n.promo-banner-54 > .inner[data-variant=\"experiment-54\"] {\n  display: none !important;\n}\n.promo-banner-55 > .inner[data-variant=\"experiment-55\"] {\n  display: none !important;\n}\n.promo-banner-56 > .inner[data-variant=\"experiment-56\"] {\n  display: none !important;\n}\n.promo-banner-57 > .inner[data-variant=\"experiment-57\"] {\n  display: none !important;\n}\n.promo-banner-58 > .inner[data-variant=\"experiment-58\"] {\n  display: none !important;\n}\n.promo-banner-59 > .inner[data-variant=\"experiment-59\"] {\n  display: none !important;\n}\n.promo-banner-60 > .inner[data-variant=\"experiment-60\"] {\n  display: none !important;\n}\n.promo-banner-61 > .inner[data-variant=\"experiment-61\"] {\n  display: none !important;\n}\n.promo-banner-62 > .inner[data-variant=\"experiment-62\"] {\n  display: none !important;\n}\n.promo-banner-63 > .inner[data-variant=\"experiment-63\"] {\n  display: none !important;\n}\n.promo-banner-64 > .inner[data-variant=\"experiment-64\"] {\n  display: none !important;\n}\n.promo-banner-65 > .inner[data-variant=\"experiment-65\"] {\n  display: none !important;\n}\n.promo-banner-66 > .inner[data-variant=\"experiment-66\"] {\n  display: none !important;\n}\n.promo-banner-67 > .inner[data-variant=\"experiment-67\"] {\n  display: none !important;\n}\n.promo-banner-68 > .inner[data-variant=\"experiment-68\"] {\n  display: none !important;\n}\n.promo-banner-69 > .inner[data-variant=\"experiment-69\"] {\n  display: none !important;\n}\n.promo-banner-70 > .inner[data-variant=\"experiment-70\"] {\n  display: none !important;\n}\n.promo-banner-71 > .inner[data-variant=\"experiment-71\"] {\n  display: none !important;\n}\n.promo-banner-72 > .inner[data-variant=\"experiment-72\"] {\n  display: none !important;\n}\n.promo-banner-73 > .inner[data-variant=\"experiment-73\"] {\n  display: none !important;\n}\n.promo-banner-74 > .inner[data-variant=\"experiment-74\"] {\n  display: none !important;\n}\n.promo-banner-75 > .inner[data-variant=\"experiment-75\"] {\n  display: none !important;\n}\n.promo-banner-76 > .inner[data-variant=\"experiment-76\"] {\n  display: none !important;\n}\n.promo-banner-77 > .inner[data-variant=\"experiment-77\"] {\n  display: none !important;\n}\n.promo-banner-78 > .inner[data-variant=\"experiment-78\"] {\n  display: none !important;\n}\n.promo-banner-79 > .inner[data-variant=\"experiment-79\"] {\n  display: none !important;\n}\n.promo-banner-80 > .inner[data-variant=\"experiment-80\"] {\n  display: none !important;\n}\n.promo-banner-81 > .inner[data-variant=\"experiment-81\"] {\n  display: none !important;\n}\n.promo-banner-82 > .inner[data-variant=\"experiment-82\"] {\n  display: none !important;\n}\n.promo-banner-83 > .inner[data-variant=\"experiment-83\"] {\n  display: none !important;\n}\n.promo-banner-84 > .inner[data-variant=\"experiment-84\"] {\n  display: none !important;\n}\n.promo-banner-85 > .inner[data-variant=\"experiment-85\"] {\n  display: none !important;\n}\n.promo-banner-86 > .inner[data-variant=\"experiment-86\"] {\n  display: none !important;\n}\n.promo-banner-87 > .inner[data-variant=\"experiment-87\"] {\n  display: none !important;\n}\n.promo-banner-88 > .inner[data-variant=\"experiment-88\"] {\n  display: none !important;\n}\n.promo-banner-89 > .inner[data-variant=\"experiment-89\"] {\n  display: none !important;\n}\n.promo-banner-90 > .inner[data-variant=\"experiment-90\"] {\n  display: none !important;\n}\n.promo-banner-91 > .inner[data-variant=\"experiment-91\"] {\n  display: none !important;\n}\n.promo-banner-92 > .inner[data-variant=\"experiment-92\"] {\n  display: none !important;\n}\n.promo-banner-93 > .inner[data-variant=\"experiment-93\"] {\n  display: none !important;\n}\n.promo-banner-94 > .inner[data-variant=\"experiment-94\"] {\n  display: none !important;\n}\n.promo-banner-95 > .inner[data-variant=\"experiment-95\"] {\n  display: none !important;\n}\n.promo-banner-96 > .inner[data-variant=\"experiment-96\"] {\n  display: none !important;\n}\n.promo-banner-97 > .inner[data-variant=\"experiment-97\"] {\n  display: none !important;\n}\n.promo-banner-98 > .inner[data-variant=\"experiment-98\"] {\n  display: none !important;\n}\n.promo-banner-99 > .inner[data-variant=\"experiment-99\"] {\n  display: none !important;\n}\n.promo-banner-100 > .inner[data-variant=\"experiment-100\"] {\n  display: none !important;\n}\n.promo-banner-101 > .inner[data-variant=\"experiment-101\"] {\n  display: none !important;\n}\n.promo-banner-102 > .inner[data-variant=\"experiment-102\"] {\n  display: none !important;\n}\n.promo-banner-103 > .inner[data-variant=\"experiment-103\"] {\n  display: none !important;\n}\n.promo-banner-104 > .inner[data-variant=\"experiment-104\"] {\n  display: none !important;\n}\n.promo-banner-105 > .inner[data-variant=\"experiment-105\"] {\n  display: none !important;\n}\n.promo-banner-106 > .inner[data-variant=\"experiment-106\"] {\n  display: none !important;\n}\n.promo-banner-107 > .inner[data-variant=\"experiment-107\"] {\n  display: none !important;\n}\n.promo-banner-108 > .inner[data-variant=\"experiment-108\"] {\n  display: none !important;\n}\n.promo-banner-109 > .inner[data-variant=\"experiment-109\"] {\n  display: none !important;\n}\n.promo-banner-110 > .inner[data-variant=\"experiment-110\"] {\n  display: none !important;\n}\n.promo-banner-111 > .inner[data-variant=\"experiment-111\"] {\n  display: none !important;\n}\n.promo-banner-112 > .inner[data-variant=\"experiment-112\"] {\n  display: none !important;\n}\n.promo-banner-113 > .inner[data-variant=\"experiment-113\"] {\n  display: none !important;\n}\n.promo-banner-114 > .inner[data-variant=\"experiment-114\"] {\n  display: none !important;\n}\n.promo-banner-115 > .inner[data-variant=\"experiment-115\"] {\n  display: none !important;\n}\n.promo-banner-116 > .inner[data-variant=\"experiment-116\"] {\n  display: none !important;\n}\n.promo-banner-117 > .inner[data-variant=\"experiment-117\"] {\n  display: none !important;\n}\n.promo-banner-118 > .inner[data-variant=\"experiment-118\"] {\n  display: none !important;\n}\n.promo-banner-119 > .inner[data-variant=\"experiment-119\"] {\n  display: none !important;\n}"
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "style",
+      "scope": "element",
+      "selector": "body > div:nth-of-type(3) > main > div:nth-of-type(2) > section:nth-of-type(4) > div > ul > li:nth-of-type(17) > a > span:nth-of-type(2)",
+      "label": "Benachrichtigungseinstellungen und Datenschutzoptionen verwalten und prüfen",
+      "fontSize": 96,
+      "fontWeight": 900,
+      "lineHeight": 2.9,
+      "letterSpacing": -1.5,
+      "padding": 64,
+      "borderRadius": 48,
+      "opacity": 0.15,
+      "textAlign": "justify"
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "style",
+      "scope": "page",
+      "selector": "html",
+      "label": "Whole page",
+      "fontWeight": 300,
+      "lineHeight": 1.7,
+      "letterSpacing": 0.5,
+      "textAlign": "left"
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "text",
+      "selector": "[data-testid=\"workspace-switcher-dropdown-trigger-button\"]",
+      "label": "Upgrade",
+      "originalText": "Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation.",
+      "newText": "Line one\nLine two\nUpgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. Upgrade to Northwind Premium today and unlock unlimited workspaces, priority support, and advanced analytics for your whole organisation. "
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "text",
+      "selector": "#a",
+      "label": "J",
+      "originalText": "J",
+      "newText": "👩🏽‍💻"
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "font",
+      "scope": "element",
+      "selector": "h1.hero-title",
+      "label": "王秀英のプロフィール設定とアカウント情報の確認",
+      "fontFamily": "'Söhne Breit Kräftig', 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'Noto Sans CJK JP', 'Apple Color Emoji', 'Segoe UI Emoji', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif"
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "font",
+      "scope": "page",
+      "selector": "html",
+      "label": "Whole page",
+      "fontFamily": "Georgia, serif",
+      "disabled": true
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "recolor",
+      "scope": "element",
+      "selector": "nav > a:nth-of-type(4)",
+      "label": "نور الهدى عبد الرحمن — إعدادات الحساب",
+      "textColor": "color-mix(in oklab, rebeccapurple 62%, lightgoldenrodyellow)",
+      "backgroundColor": "rgba(255, 255, 255, 0.87)"
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "recolor",
+      "scope": "page",
+      "selector": "html",
+      "label": "Whole page",
+      "backgroundColor": "#0b0b0c"
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "remove",
+      "selector": "body > div:nth-of-type(3) > main > div:nth-of-type(2) > section:nth-of-type(4) > div > ul > li:nth-of-type(18) > a > span:nth-of-type(2)",
+      "label": "<script>alert(1)</script> &amp; **bold**"
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "remove",
+      "selector": "#x",
+      "label": "",
+      "disabled": true
+    },
+    {
+      "siteKey": "accounts.eu-central-1.console.northwind-industries-holdings.example.com",
+      "type": "remove",
+      "selector": "div.cookie-consent-banner-wrapper.is-visible.has-backdrop",
+      "label": "🦊 We value your privacy — Q3 Board Deck FINAL (revised) v12 [approved by legal].pdf"
+    },
+    {
+      "siteKey": "xn--mnchen-3ya.example",
+      "type": "css",
+      "selector": "html",
+      "label": "Custom CSS",
+      "css": ".promo-banner-0 > .inner[data-variant=\"experiment-0\"] {\n  display: none !important;\n}\n.promo-banner-1 > .inner[data-variant=\"experiment-1\"] {\n  display: none !important;\n}\n.promo-banner-2 > .inner[data-variant=\"experiment-2\"] {\n  display: none !important;\n}\n.promo-banner-3 > .inner[data-variant=\"experiment-3\"] {\n  display: none !important;\n}\n.promo-banner-4 > .inner[data-variant=\"experiment-4\"] {\n  display: none !important;\n}\n.promo-banner-5 > .inner[data-variant=\"experiment-5\"] {\n  display: none !important;\n}\n.promo-banner-6 > .inner[data-variant=\"experiment-6\"] {\n  display: none !important;\n}\n.promo-banner-7 > .inner[data-variant=\"experiment-7\"] {\n  display: none !important;\n}\n.promo-banner-8 > .inner[data-variant=\"experiment-8\"] {\n  display: none !important;\n}\n.promo-banner-9 > .inner[data-variant=\"experiment-9\"] {\n  display: none !important;\n}\n.promo-banner-10 > .inner[data-variant=\"experiment-10\"] {\n  display: none !important;\n}\n.promo-banner-11 > .inner[data-variant=\"experiment-11\"] {\n  display: none !important;\n}\n.promo-banner-12 > .inner[data-variant=\"experiment-12\"] {\n  display: none !important;\n}\n.promo-banner-13 > .inner[data-variant=\"experiment-13\"] {\n  display: none !important;\n}\n.promo-banner-14 > .inner[data-variant=\"experiment-14\"] {\n  display: none !important;\n}\n.promo-banner-15 > .inner[data-variant=\"experiment-15\"] {\n  display: none !important;\n}\n.promo-banner-16 > .inner[data-variant=\"experiment-16\"] {\n  display: none !important;\n}\n.promo-banner-17 > .inner[data-variant=\"experiment-17\"] {\n  display: none !important;\n}\n.promo-banner-18 > .inner[data-variant=\"experiment-18\"] {\n  display: none !important;\n}\n.promo-banner-19 > .inner[data-variant=\"experiment-19\"] {\n  display: none !important;\n}\n.promo-banner-20 > .inner[data-variant=\"experiment-20\"] {\n  display: none !important;\n}\n.promo-banner-21 > .inner[data-variant=\"experiment-21\"] {\n  display: none !important;\n}\n.promo-banner-22 > .inner[data-variant=\"experiment-22\"] {\n  display: none !important;\n}\n.promo-banner-23 > .inner[data-variant=\"experiment-23\"] {\n  display: none !important;\n}\n.promo-banner-24 > .inner[data-variant=\"experiment-24\"] {\n  display: none !important;\n}\n.promo-banner-25 > .inner[data-variant=\"experiment-25\"] {\n  display: none !important;\n}\n.promo-banner-26 > .inner[data-variant=\"experiment-26\"] {\n  display: none !important;\n}\n.promo-banner-27 > .inner[data-variant=\"experiment-27\"] {\n  display: none !important;\n}\n.promo-banner-28 > .inner[data-variant=\"experiment-28\"] {\n  display: none !important;\n}\n.promo-banner-29 > .inner[data-variant=\"experiment-29\"] {\n  display: none !important;\n}\n.promo-banner-30 > .inner[data-variant=\"experiment-30\"] {\n  display: none !important;\n}\n.promo-banner-31 > .inner[data-variant=\"experiment-31\"] {\n  display: none !important;\n}\n.promo-banner-32 > .inner[data-variant=\"experiment-32\"] {\n  display: none !important;\n}\n.promo-banner-33 > .inner[data-variant=\"experiment-33\"] {\n  display: none !important;\n}\n.promo-banner-34 > .inner[data-variant=\"experiment-34\"] {\n  display: none !important;\n}\n.promo-banner-35 > .inner[data-variant=\"experiment-35\"] {\n  display: none !important;\n}\n.promo-banner-36 > .inner[data-variant=\"experiment-36\"] {\n  display: none !important;\n}\n.promo-banner-37 > .inner[data-variant=\"experiment-37\"] {\n  display: none !important;\n}\n.promo-banner-38 > .inner[data-variant=\"experiment-38\"] {\n  display: none !important;\n}\n.promo-banner-39 > .inner[data-variant=\"experiment-39\"] {\n  display: none !important;\n}\n.promo-banner-40 > .inner[data-variant=\"experiment-40\"] {\n  display: none !important;\n}\n.promo-banner-41 > .inner[data-variant=\"experiment-41\"] {\n  display: none !important;\n}\n.promo-banner-42 > .inner[data-variant=\"experiment-42\"] {\n  display: none !important;\n}\n.promo-banner-43 > .inner[data-variant=\"experiment-43\"] {\n  display: none !important;\n}\n.promo-banner-44 > .inner[data-variant=\"experiment-44\"] {\n  display: none !important;\n}\n.promo-banner-45 > .inner[data-variant=\"experiment-45\"] {\n  display: none !important;\n}\n.promo-banner-46 > .inner[data-variant=\"experiment-46\"] {\n  display: none !important;\n}\n.promo-banner-47 > .inner[data-variant=\"experiment-47\"] {\n  display: none !important;\n}\n.promo-banner-48 > .inner[data-variant=\"experiment-48\"] {\n  display: none !important;\n}\n.promo-banner-49 > .inner[data-variant=\"experiment-49\"] {\n  display: none !important;\n}\n.promo-banner-50 > .inner[data-variant=\"experiment-50\"] {\n  display: none !important;\n}\n.promo-banner-51 > .inner[data-variant=\"experiment-51\"] {\n  display: none !important;\n}\n.promo-banner-52 > .inner[data-variant=\"experiment-52\"] {\n  display: none !important;\n}\n.promo-banner-53 > .inner[data-variant=\"experiment-53\"] {\n  display: none !important;\n}\n.promo-banner-54 > .inner[data-variant=\"experiment-54\"] {\n  display: none !important;\n}\n.promo-banner-55 > .inner[data-variant=\"experiment-55\"] {\n  display: none !important;\n}\n.promo-banner-56 > .inner[data-variant=\"experiment-56\"] {\n  display: none !important;\n}\n.promo-banner-57 > .inner[data-variant=\"experiment-57\"] {\n  display: none !important;\n}\n.promo-banner-58 > .inner[data-variant=\"experiment-58\"] {\n  display: none !important;\n}\n.promo-banner-59 > .inner[data-variant=\"experiment-59\"] {\n  display: none !important;\n}\n.promo-banner-60 > .inner[data-variant=\"experiment-60\"] {\n  display: none !important;\n}\n.promo-banner-61 > .inner[data-variant=\"experiment-61\"] {\n  display: none !important;\n}\n.promo-banner-62 > .inner[data-variant=\"experiment-62\"] {\n  display: none !important;\n}\n.promo-banner-63 > .inner[data-variant=\"experiment-63\"] {\n  display: none !important;\n}\n.promo-banner-64 > .inner[data-variant=\"experiment-64\"] {\n  display: none !important;\n}\n.promo-banner-65 > .inner[data-variant=\"experiment-65\"] {\n  display: none !important;\n}\n.promo-banner-66 > .inner[data-variant=\"experiment-66\"] {\n  display: none !important;\n}\n.promo-banner-67 > .inner[data-variant=\"experiment-67\"] {\n  display: none !important;\n}\n.promo-banner-68 > .inner[data-variant=\"experiment-68\"] {\n  display: none !important;\n}\n.promo-banner-69 > .inner[data-variant=\"experiment-69\"] {\n  display: none !important;\n}\n.promo-banner-70 > .inner[data-variant=\"experiment-70\"] {\n  display: none !important;\n}\n.promo-banner-71 > .inner[data-variant=\"experiment-71\"] {\n  display: none !important;\n}\n.promo-banner-72 > .inner[data-variant=\"experiment-72\"] {\n  display: none !important;\n}\n.promo-banner-73 > .inner[data-variant=\"experiment-73\"] {\n  display: none !important;\n}\n.promo-banner-74 > .inner[data-variant=\"experiment-74\"] {\n  display: none !important;\n}\n.promo-banner-75 > .inner[data-variant=\"experiment-75\"] {\n  display: none !important;\n}\n.promo-banner-76 > .inner[data-variant=\"experiment-76\"] {\n  display: none !important;\n}\n.promo-banner-77 > .inner[data-variant=\"experiment-77\"] {\n  display: none !important;\n}\n.promo-banner-78 > .inner[data-variant=\"experiment-78\"] {\n  display: none !important;\n}\n.promo-banner-79 > .inner[data-variant=\"experiment-79\"] {\n  display: none !important;\n}\n.promo-banner-80 > .inner[data-variant=\"experiment-80\"] {\n  display: none !important;\n}\n.promo-banner-81 > .inner[data-variant=\"experiment-81\"] {\n  display: none !important;\n}\n.promo-banner-82 > .inner[data-variant=\"experiment-82\"] {\n  display: none !important;\n}\n.promo-banner-83 > .inner[data-variant=\"experiment-83\"] {\n  display: none !important;\n}\n.promo-banner-84 > .inner[data-variant=\"experiment-84\"] {\n  display: none !important;\n}\n.promo-banner-85 > .inner[data-variant=\"experiment-85\"] {\n  display: none !important;\n}\n.promo-banner-86 > .inner[data-variant=\"experiment-86\"] {\n  display: none !important;\n}\n.promo-banner-87 > .inner[data-variant=\"experiment-87\"] {\n  display: none !important;\n}\n.promo-banner-88 > .inner[data-variant=\"experiment-88\"] {\n  display: none !important;\n}\n.promo-banner-89 > .inner[data-variant=\"experiment-89\"] {\n  display: none !important;\n}\n.promo-banner-90 > .inner[data-variant=\"experiment-90\"] {\n  display: none !important;\n}\n.promo-banner-91 > .inner[data-variant=\"experiment-91\"] {\n  display: none !important;\n}\n.promo-banner-92 > .inner[data-variant=\"experiment-92\"] {\n  display: none !important;\n}\n.promo-banner-93 > .inner[data-variant=\"experiment-93\"] {\n  display: none !important;\n}\n.promo-banner-94 > .inner[data-variant=\"experiment-94\"] {\n  display: none !important;\n}\n.promo-banner-95 > .inner[data-variant=\"experiment-95\"] {\n  display: none !important;\n}\n.promo-banner-96 > .inner[data-variant=\"experiment-96\"] {\n  display: none !important;\n}\n.promo-banner-97 > .inner[data-variant=\"experiment-97\"] {\n  display: none !important;\n}\n.promo-banner-98 > .inner[data-variant=\"experiment-98\"] {\n  display: none !important;\n}\n.promo-banner-99 > .inner[data-variant=\"experiment-99\"] {\n  display: none !important;\n}\n.promo-banner-100 > .inner[data-variant=\"experiment-100\"] {\n  display: none !important;\n}\n.promo-banner-101 > .inner[data-variant=\"experiment-101\"] {\n  display: none !important;\n}\n.promo-banner-102 > .inner[data-variant=\"experiment-102\"] {\n  display: none !important;\n}\n.promo-banner-103 > .inner[data-variant=\"experiment-103\"] {\n  display: none !important;\n}\n.promo-banner-104 > .inner[data-variant=\"experiment-104\"] {\n  display: none !important;\n}\n.promo-banner-105 > .inner[data-variant=\"experiment-105\"] {\n  display: none !important;\n}\n.promo-banner-106 > .inner[data-variant=\"experiment-106\"] {\n  display: none !important;\n}\n.promo-banner-107 > .inner[data-variant=\"experiment-107\"] {\n  display: none !important;\n}\n.promo-banner-108 > .inner[data-variant=\"experiment-108\"] {\n  display: none !important;\n}\n.promo-banner-109 > .inner[data-variant=\"experiment-109\"] {\n  display: none !important;\n}\n.promo-banner-110 > .inner[data-variant=\"experiment-110\"] {\n  display: none !important;\n}\n.promo-banner-111 > .inner[data-variant=\"experiment-111\"] {\n  display: none !important;\n}\n.promo-banner-112 > .inner[data-variant=\"experiment-112\"] {\n  display: none !important;\n}\n.promo-banner-113 > .inner[data-variant=\"experiment-113\"] {\n  display: none !important;\n}\n.promo-banner-114 > .inner[data-variant=\"experiment-114\"] {\n  display: none !important;\n}\n.promo-banner-115 > .inner[data-variant=\"experiment-115\"] {\n  display: none !important;\n}\n.promo-banner-116 > .inner[data-variant=\"experiment-116\"] {\n  display: none !important;\n}\n.promo-banner-117 > .inner[data-variant=\"experiment-117\"] {\n  display: none !important;\n}\n.promo-banner-118 > .inner[data-variant=\"experiment-118\"] {\n  display: none !important;\n}\n.promo-banner-119 > .inner[data-variant=\"experiment-119\"] {\n  display: none !important;\n}"
+    },
+    {
+      "siteKey": "xn--mnchen-3ya.example",
+      "type": "style",
+      "scope": "element",
+      "selector": "body > div:nth-of-type(3) > main > div:nth-of-type(2) > section:nth-of-type(4) > div > ul > li:nth-of-type(17) > a > span:nth-of-type(2)",
+      "label": "Benachrichtigungseinstellungen und Datenschutzoptionen verwalten und prüfen",
+      "fontSize": 96,
+      "fontWeight": 900,
+      "lineHeight": 2.9,
+      "letterSpacing": -1.5,
+      "padding": 64,
+      "borderRadius": 48,
+      "opacity": 0.15,
+      "textAlign": "justify"
+    },
+    {
+      "siteKey": "xn--mnchen-3ya.example",
+      "type": "style",
+      "scope": "page",
+      "selector": "html",
+      "label": "Whole page",
+      "fontWeight": 300,
+      "lineHeight": 1.7,
+      "letterSpacing": 0.5,
+      "textAlign": "left"
+    },
+    {
+      "siteKey": "a.test",
+      "type": "remove",
+      "selector": "#b",
+      "label": "b"
+    }
+  ]
+}

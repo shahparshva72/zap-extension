@@ -31,6 +31,12 @@ The content script is built separately (`vite.content.config.ts`) as one self-co
 file, because content scripts can't load `import`s. It can import from `src/shared`
 like any other entry point.
 
+To stress-test the popup and manage page, import
+[`dev/worst-case-boosts.json`](dev/worst-case-boosts.json) from `Manage all boosts`. It
+holds deliberately awkward but realistic boosts (long hostnames and selectors,
+right-to-left and CJK labels, emoji, an empty label, a 360-line stylesheet). It is not part
+of the built extension.
+
 ## Load A Local Build
 
 1. Open `chrome://extensions` in Chrome, Arc, Edge, or Brave.
