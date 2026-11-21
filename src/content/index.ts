@@ -44,6 +44,7 @@ const HIGHLIGHT_SHADOW = "0 0 0 1px rgba(255,255,255,0.25), 0 18px 40px rgba(26,
 // While picking, these never reach the page, so sites that act on pointerdown/mousedown
 // (common in React apps and search results) don't navigate or open menus mid-pick.
 const SUPPRESSED_EVENTS = ["pointerdown", "pointerup", "mousedown", "mouseup", "auxclick", "dblclick"];
+const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
 const FONT_DATALIST_ID = "zap-extension-font-presets";
 const INITIALIZED_FLAG = "__zapExtensionInitialized";
 
@@ -190,6 +191,8 @@ function styleTabButton(button: HTMLButtonElement, active: boolean): void {
   button.style.fontWeight = "700";
   button.style.letterSpacing = "0.02em";
   button.style.textTransform = "uppercase";
+  button.style.whiteSpace = "nowrap";
+  button.style.overflowWrap = "normal";
   button.style.borderRadius = "4px";
   button.style.cursor = "pointer";
   button.style.border = active
@@ -603,14 +606,23 @@ class BoostPicker {
     highlight.style.boxShadow = HIGHLIGHT_SHADOW;
     highlight.style.backdropFilter = "blur(2px)";
     highlight.style.opacity = "0";
-    highlight.style.transition = "opacity 120ms ease, transform 120ms ease";
+    highlight.style.transition = "opacity 120ms ease";
 
     const hud = document.createElement("div");
     hud.id = HUD_ID;
+    // Inherited properties cross the shadow boundary, so a page that sets direction,
+    // text-transform, word-spacing and the like on <html> would otherwise restyle the HUD.
+    hud.style.all = "initial";
+    // `all` leaves direction alone, and the HUD copy is English.
+    hud.style.direction = "ltr";
+    hud.style.display = "block";
+    hud.style.boxSizing = "border-box";
     hud.style.position = "fixed";
     hud.style.top = "20px";
     hud.style.right = "20px";
-    hud.style.width = "300px";
+    hud.style.width = "min(332px, calc(100vw - 40px))";
+    hud.style.overflowWrap = "anywhere";
+    hud.style.transformOrigin = "top right";
     hud.style.padding = "14px 16px";
     hud.style.borderRadius = "8px";
     hud.style.border = "1px solid rgba(255, 216, 61, 0.28)";
@@ -679,8 +691,23 @@ class BoostPicker {
       void this.performUndo();
     });
 
+    // Inline styles can't express :active or :focus-visible, so those live here.
+    const hudStyles = document.createElement("style");
+    hudStyles.textContent = `
+      button { transition: transform 160ms ${EASE_OUT}; }
+      button:active { transform: scale(0.97); }
+      button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+        outline: 2px solid #ffd83d;
+        outline-offset: 1px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        button { transition: none; }
+        button:active { transform: none; }
+      }
+    `;
+
     hud.append(tabsRow, hudText, editorPanel, hudUndo);
-    shadow.append(highlight, hud, createFontDatalist());
+    shadow.append(hudStyles, highlight, hud, createFontDatalist());
 
     this.overlayRoot = root;
     this.highlightBox = highlight;
@@ -688,6 +715,17 @@ class BoostPicker {
     this.hudUndo = hudUndo;
     this.editorPanel = editorPanel;
     mountOverlay(root);
+
+    // Boost mode starts from a click in the popup, so the HUD would otherwise pop into
+    // an unrelated corner of the page. Reduced motion keeps the fade and drops the movement.
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    hud.animate(
+      [
+        { opacity: 0, transform: reduceMotion ? "none" : "translateY(-6px) scale(0.98)" },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: 180, easing: EASE_OUT },
+    );
   }
 
   private syncTabButtonStyles(): void {

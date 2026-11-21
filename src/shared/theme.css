@@ -12,6 +12,7 @@
   --danger: #b7392f;
   --mono: ui-monospace, "SF Mono", "Berkeley Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --radius: 4px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -47,13 +48,18 @@ code {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
@@ -114,6 +120,20 @@ input:focus-visible {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  min-width: 0;
+}
+
+.section-title > * {
+  flex: none;
+}
+
+/* A long hostname gives way first, so the count and the actions stay on one line. */
+.section-title .site-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .section-title .count {
@@ -135,6 +155,7 @@ input:focus-visible {
   text-decoration-color: var(--border-strong);
   text-underline-offset: 3px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .text-button:hover:not(:disabled) {
@@ -221,6 +242,11 @@ input:focus-visible {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+
+.ghost-button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .ghost-button:hover {
@@ -261,7 +287,14 @@ a.ghost-button {
   height: 11px;
   border-radius: 50%;
   background: var(--ink-muted);
-  transition: left 120ms ease, background 120ms ease;
+  transition: transform 150ms var(--ease-out), background-color 150ms ease;
+}
+
+/* The switch is small; this widens what can be clicked without changing how it looks. */
+.boost-switch::before {
+  content: "";
+  position: absolute;
+  inset: -9px -7px;
 }
 
 .boost-switch:checked {
@@ -270,7 +303,7 @@ a.ghost-button {
 }
 
 .boost-switch:checked::after {
-  left: 12px;
+  transform: translateX(11px);
   background: var(--accent-ink);
 }
 
@@ -290,6 +323,7 @@ a.ghost-button {
 
 .section-actions {
   display: flex;
+  flex: none;
   align-items: baseline;
   gap: 10px;
 }
@@ -332,4 +366,22 @@ a.ghost-button {
   color: var(--ink-muted);
   font-size: 11px;
   flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghost-button,
+  .toolbar-button,
+  .mode-button {
+    transition: none;
+  }
+
+  .ghost-button:active:not(:disabled),
+  .toolbar-button:active:not(:disabled),
+  .mode-button:active:not(:disabled) {
+    transform: none;
+  }
+
+  .boost-switch::after {
+    transition: background-color 150ms ease;
+  }
 }
