@@ -1,13 +1,28 @@
 import "./styles.css";
 
+import { FONT_PRESETS } from "../shared/fonts";
 import {
   describeBoostRule,
   escapeHtml,
   formatDate,
+  truncate,
   TYPE_LABELS,
   ZAP_ICON_SVG,
 } from "../shared/format";
+import {
+  CUSTOM_CSS_UNSAFE_MESSAGE,
+  isEditableBoost,
+  isSafeCssValue,
+  isSafeCustomCss,
+} from "../shared/rules";
 import { BOOST_STORAGE_KEY } from "../shared/storage";
+import {
+  FONT_WEIGHT_OPTIONS,
+  formatStyleReadout,
+  STYLE_NUMERIC_PROPS,
+  TEXT_ALIGN_LABEL,
+  TEXT_ALIGN_VALUES,
+} from "../shared/style";
 import type {
   BoostRule,
   BoostType,
@@ -16,6 +31,8 @@ import type {
   ImportableBoostRule,
   ListBoostsResponse,
   RestoreAllBoostsResponse,
+  StyleValues,
+  TextAlign,
 } from "../shared/types";
 
 const TYPE_FILTER_OPTIONS: Array<{ value: "all" | BoostType; label: string }> = [
@@ -24,12 +41,17 @@ const TYPE_FILTER_OPTIONS: Array<{ value: "all" | BoostType; label: string }> = 
   { value: "recolor", label: "Recolor" },
   { value: "font", label: "Font" },
   { value: "text", label: "Text" },
+  { value: "style", label: "Style" },
+  { value: "css", label: "CSS" },
 ];
 
 let allRules: BoostRule[] = [];
 let searchQuery = "";
 let typeFilter: "all" | BoostType = "all";
 let isBusy = false;
+let editingId: string | null = null;
+// Set when storage changes while an editor is open; the list reloads once it closes.
+let pendingReload = false;
 
 async function sendRuntimeMessage<TResponse extends CommandResult>(
   message: object,
@@ -80,6 +102,14 @@ function syncControlAvailability(): void {
     typeSelect.disabled = isBusy;
   }
 
+  document
+    .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      ".boost-editor input, .boost-editor textarea, .boost-editor select",
+    )
+    .forEach((control) => {
+      control.disabled = isBusy;
+    });
+
   if (isBusy) {
     return;
   }
@@ -109,7 +139,11 @@ function matchesQuery(rule: BoostRule, query: string): boolean {
         ? rule.fontFamily
         : rule.type === "text"
           ? `${rule.originalText} ${rule.newText}`
-          : "";
+          : rule.type === "style"
+            ? describeBoostRule(rule)
+            : rule.type === "css"
+              ? rule.css
+              : "";
 
   const haystack = `${rule.siteKey} ${rule.label} ${rule.selector} ${extra}`.toLowerCase();
   return haystack.includes(query.toLowerCase());
@@ -135,12 +169,16 @@ function groupBySite(rules: BoostRule[]): Map<string, BoostRule[]> {
 }
 
 function createRuleRowMarkup(rule: BoostRule): string {
+  const editButton = isEditableBoost(rule)
+    ? `<button class="ghost-button" type="button" data-edit-id="${rule.id}">Edit</button>`
+    : "";
   return `
-    <li class="row">
+    <li class="row${editingId === rule.id ? " row--editing" : ""}" data-rule-id="${rule.id}">
       <div class="row-copy">
         <p class="row-label"><span class="type-badge">${TYPE_LABELS[rule.type]}</span>${escapeHtml(describeBoostRule(rule))}</p>
         <p class="row-meta">${formatDate(rule.createdAt)} · <code>${escapeHtml(rule.selector)}</code></p>
       </div>
+      ${editButton}
       <button class="ghost-button" type="button" data-restore-id="${rule.id}">Restore</button>
     </li>
   `;
@@ -156,6 +194,321 @@ function createSiteGroupMarkup(siteKey: string, rules: BoostRule[]): string {
       <ul class="row-list">${rules.map(createRuleRowMarkup).join("")}</ul>
     </section>
   `;
+}
+
+type CollectResult = { values: Record<string, unknown> } | { error: string };
+
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  className?: string,
+  text?: string,
+): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (className) {
+    node.className = className;
+  }
+  if (text !== undefined) {
+    node.textContent = text;
+  }
+  return node;
+}
+
+function labeledCheckbox(labelText: string, checked: boolean): {
+  row: HTMLDivElement;
+  label: HTMLLabelElement;
+  toggle: HTMLInputElement;
+} {
+  const row = el("div", "edit-row");
+  const label = el("label", "edit-label");
+  const toggle = document.createElement("input");
+  toggle.type = "checkbox";
+  toggle.checked = checked;
+  label.append(toggle, document.createTextNode(` ${labelText}`));
+  row.append(label);
+  return { row, label, toggle };
+}
+
+// The color swatch is a convenience; the text input holds the actual value and accepts
+// any CSS color, so it is the source of truth. They stay in sync both ways.
+function createColorEditRow(
+  labelText: string,
+  initial: string | undefined,
+  fallback: string,
+): { row: HTMLDivElement; read: () => string | undefined } {
+  const { row, toggle } = labeledCheckbox(labelText, initial !== undefined);
+
+  const picker = document.createElement("input");
+  picker.type = "color";
+  picker.value = /^#[0-9a-f]{6}$/i.test(initial ?? "") ? (initial as string) : fallback;
+  picker.className = "edit-color";
+
+  const text = document.createElement("input");
+  text.type = "text";
+  text.className = "edit-input";
+  text.value = initial ?? fallback;
+
+  picker.addEventListener("input", () => {
+    text.value = picker.value;
+    toggle.checked = true;
+  });
+  text.addEventListener("input", () => {
+    if (/^#[0-9a-f]{6}$/i.test(text.value.trim())) {
+      picker.value = text.value.trim();
+    }
+    toggle.checked = true;
+  });
+
+  row.append(picker, text);
+  return { row, read: () => (toggle.checked ? text.value.trim() : undefined) };
+}
+
+function buildEditorForm(
+  rule: BoostRule,
+  editor: HTMLDivElement,
+): { collect: () => CollectResult } {
+  if (rule.type === "recolor") {
+    const textRow = createColorEditRow("Text color", rule.textColor, "#000000");
+    const bgRow = createColorEditRow("Background", rule.backgroundColor, "#ffffff");
+    editor.append(textRow.row, bgRow.row);
+    return {
+      collect: () => {
+        const textColor = textRow.read();
+        const backgroundColor = bgRow.read();
+        if (!textColor && !backgroundColor) {
+          return { error: "Turn on at least one color." };
+        }
+        for (const value of [textColor, backgroundColor]) {
+          if (value && !(isSafeCssValue(value) && CSS.supports("color", value))) {
+            return { error: `"${truncate(value, 40)}" isn't a usable CSS color.` };
+          }
+        }
+        return { values: { textColor, backgroundColor } };
+      },
+    };
+  }
+
+  if (rule.type === "font") {
+    const row = el("div", "edit-row");
+    const label = el("label", "edit-label", "Font");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "edit-input";
+    input.value = rule.fontFamily;
+    const datalistId = `font-presets-${rule.id}`;
+    input.setAttribute("list", datalistId);
+    const datalist = document.createElement("datalist");
+    datalist.id = datalistId;
+    for (const preset of FONT_PRESETS) {
+      const option = document.createElement("option");
+      option.value = preset.value;
+      option.label = preset.label;
+      datalist.append(option);
+    }
+    row.append(label, input, datalist);
+    editor.append(row);
+    return {
+      collect: () => {
+        const fontFamily = input.value.trim();
+        if (!fontFamily) {
+          return { error: "Enter a font before saving." };
+        }
+        if (!(isSafeCssValue(fontFamily) && CSS.supports("font-family", fontFamily))) {
+          return { error: "That isn't a valid CSS font list. Try something like: Georgia, serif" };
+        }
+        return { values: { fontFamily } };
+      },
+    };
+  }
+
+  if (rule.type === "text") {
+    editor.append(el("div", "edit-note", `Original: "${truncate(rule.originalText, 80)}"`));
+    const textarea = document.createElement("textarea");
+    textarea.className = "edit-input";
+    textarea.rows = 3;
+    textarea.value = rule.newText;
+    editor.append(textarea);
+    return {
+      collect: () =>
+        textarea.value.trim()
+          ? { values: { newText: textarea.value } }
+          : { error: "Enter some text before saving." },
+    };
+  }
+
+  if (rule.type === "style") {
+    const entries: Array<{ read: () => [string, unknown] | null }> = [];
+
+    for (const spec of STYLE_NUMERIC_PROPS) {
+      if (rule.scope === "page" && !spec.pageScope) {
+        continue;
+      }
+      const current = rule[spec.key];
+      const { row, toggle } = labeledCheckbox(spec.label, typeof current === "number");
+
+      let control: HTMLInputElement | HTMLSelectElement;
+      if (spec.key === "fontWeight") {
+        const select = document.createElement("select");
+        select.className = "edit-input";
+        for (const option of FONT_WEIGHT_OPTIONS) {
+          const item = document.createElement("option");
+          item.value = String(option.value);
+          item.textContent = `${option.label} ${option.value}`;
+          select.append(item);
+        }
+        select.value = String(current ?? spec.fallback);
+        control = select;
+      } else {
+        const range = document.createElement("input");
+        range.type = "range";
+        range.min = String(spec.min);
+        range.max = String(spec.max);
+        range.step = String(spec.step);
+        range.value = String(current ?? spec.fallback);
+        control = range;
+      }
+
+      const readout = el("span", "edit-readout", formatStyleReadout(spec, Number(control.value)));
+      const sync = () => {
+        toggle.checked = true;
+        readout.textContent = formatStyleReadout(spec, Number(control.value));
+      };
+      control.addEventListener("input", sync);
+      control.addEventListener("change", sync);
+
+      row.append(control, readout);
+      editor.append(row);
+      entries.push({ read: () => (toggle.checked ? [spec.key, Number(control.value)] : null) });
+    }
+
+    {
+      const { row, toggle } = labeledCheckbox(TEXT_ALIGN_LABEL, Boolean(rule.textAlign));
+      const select = document.createElement("select");
+      select.className = "edit-input";
+      for (const value of TEXT_ALIGN_VALUES) {
+        const item = document.createElement("option");
+        item.value = value;
+        item.textContent = value[0].toUpperCase() + value.slice(1);
+        select.append(item);
+      }
+      select.value = rule.textAlign ?? "left";
+      const readout = el("span", "edit-readout", select.value);
+      const sync = () => {
+        toggle.checked = true;
+        readout.textContent = select.value;
+      };
+      select.addEventListener("input", sync);
+      select.addEventListener("change", sync);
+      row.append(select, readout);
+      editor.append(row);
+      entries.push({ read: () => (toggle.checked ? ["textAlign", select.value as TextAlign] : null) });
+    }
+
+    return {
+      collect: () => {
+        const values: StyleValues = {};
+        for (const entry of entries) {
+          const pair = entry.read();
+          if (pair) {
+            (values as Record<string, unknown>)[pair[0]] = pair[1];
+          }
+        }
+        return Object.keys(values).length > 0
+          ? { values: values as Record<string, unknown> }
+          : { error: "Turn on at least one setting." };
+      },
+    };
+  }
+
+  if (rule.type === "css") {
+    const textarea = document.createElement("textarea");
+    textarea.className = "edit-input edit-css";
+    textarea.rows = 12;
+    textarea.spellcheck = false;
+    textarea.value = rule.css;
+    // Tab inside the stylesheet indents instead of moving focus out of the editor.
+    textarea.addEventListener("keydown", (event) => {
+      if (event.key !== "Tab") {
+        return;
+      }
+      event.preventDefault();
+      const { selectionStart: start, selectionEnd: end } = textarea;
+      textarea.value = `${textarea.value.slice(0, start)}  ${textarea.value.slice(end)}`;
+      textarea.selectionStart = textarea.selectionEnd = start + 2;
+    });
+    editor.append(textarea);
+    return {
+      collect: () => {
+        const css = textarea.value;
+        if (!css.trim()) {
+          return { error: "Custom CSS can't be empty. Use Restore to remove it." };
+        }
+        if (!isSafeCustomCss(css)) {
+          return { error: CUSTOM_CSS_UNSAFE_MESSAGE };
+        }
+        return { values: { css } };
+      },
+    };
+  }
+
+  return { collect: () => ({ error: "This boost type has nothing to edit." }) };
+}
+
+function mountEditor(rule: BoostRule, li: HTMLLIElement): void {
+  li.querySelector(".boost-editor")?.remove();
+
+  const editor = el("div", "boost-editor");
+  const scope = "scope" in rule && rule.scope === "page" ? "Whole page" : rule.selector;
+  editor.append(el("div", "boost-editor-head", `Editing · ${rule.siteKey} · ${scope}`));
+
+  const { collect } = buildEditorForm(rule, editor);
+
+  const actions = el("div", "edit-actions");
+  const save = el("button", "toolbar-button", "Save");
+  const cancel = el("button", "ghost-button", "Cancel");
+  actions.append(save, cancel);
+  editor.append(actions);
+  li.append(editor);
+
+  save.addEventListener("click", async () => {
+    const result = collect();
+    if ("error" in result) {
+      setStatusMessage(result.error, "error");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await sendRuntimeMessage({
+        type: "UPDATE_BOOST",
+        payload: { id: rule.id, values: result.values },
+      });
+      editingId = null;
+      pendingReload = false;
+      await loadRules();
+      setStatusMessage("Saved changes.");
+    } catch (error) {
+      reportError(error, "That boost could not be saved.");
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  cancel.addEventListener("click", () => {
+    dismissEditor();
+  });
+}
+
+function dismissEditor(): void {
+  const hadEditor = editingId !== null;
+  editingId = null;
+  if (pendingReload) {
+    pendingReload = false;
+    void loadRules().catch((error) => reportError(error, "Saved boosts could not be loaded."));
+    return;
+  }
+  if (hadEditor) {
+    renderList();
+  }
 }
 
 function renderList(): void {
@@ -192,9 +545,39 @@ function renderList(): void {
 
   attachRowHandlers();
   syncControlAvailability();
+
+  if (editingId) {
+    const rule = allRules.find((entry) => entry.id === editingId);
+    const li = rule
+      ? list.querySelector<HTMLLIElement>(`li[data-rule-id="${rule.id}"]`)
+      : null;
+    if (rule && li) {
+      mountEditor(rule, li);
+    } else if (!rule) {
+      editingId = null;
+    }
+  }
 }
 
 function attachRowHandlers(): void {
+  document.querySelectorAll<HTMLButtonElement>("[data-edit-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.editId;
+      const rule = allRules.find((entry) => entry.id === id);
+      if (!rule) {
+        return;
+      }
+      // One editor at a time; clicking Edit on the open row closes it.
+      if (editingId === rule.id) {
+        dismissEditor();
+      } else {
+        editingId = rule.id;
+        setStatusMessage("Ready.");
+        renderList();
+      }
+    });
+  });
+
   document.querySelectorAll<HTMLButtonElement>("[data-restore-id]").forEach((button) => {
     button.addEventListener("click", async () => {
       const id = button.dataset.restoreId;
@@ -282,6 +665,15 @@ function parseImportFile(raw: string): ImportableBoostRule[] {
       fontFamily: typeof entry.fontFamily === "string" ? entry.fontFamily : undefined,
       originalText: typeof entry.originalText === "string" ? entry.originalText : undefined,
       newText: typeof entry.newText === "string" ? entry.newText : undefined,
+      fontSize: typeof entry.fontSize === "number" ? entry.fontSize : undefined,
+      fontWeight: typeof entry.fontWeight === "number" ? entry.fontWeight : undefined,
+      lineHeight: typeof entry.lineHeight === "number" ? entry.lineHeight : undefined,
+      letterSpacing: typeof entry.letterSpacing === "number" ? entry.letterSpacing : undefined,
+      padding: typeof entry.padding === "number" ? entry.padding : undefined,
+      borderRadius: typeof entry.borderRadius === "number" ? entry.borderRadius : undefined,
+      opacity: typeof entry.opacity === "number" ? entry.opacity : undefined,
+      textAlign: typeof entry.textAlign === "string" ? entry.textAlign : undefined,
+      css: typeof entry.css === "string" ? entry.css : undefined,
       pageUrl: typeof entry.pageUrl === "string" ? entry.pageUrl : undefined,
       pageTitle: typeof entry.pageTitle === "string" ? entry.pageTitle : undefined,
       createdAt: typeof entry.createdAt === "string" ? entry.createdAt : undefined,
@@ -331,12 +723,14 @@ function render(): void {
   const searchInput = document.getElementById("search-input") as HTMLInputElement;
   searchInput.addEventListener("input", () => {
     searchQuery = searchInput.value;
+    dismissEditor();
     renderList();
   });
 
   const typeSelect = document.getElementById("type-filter") as HTMLSelectElement;
   typeSelect.addEventListener("change", () => {
     typeFilter = typeSelect.value as "all" | BoostType;
+    dismissEditor();
     renderList();
   });
 
@@ -403,12 +797,31 @@ function render(): void {
   });
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "local" && changes[BOOST_STORAGE_KEY]) {
-      void loadRules().catch((error) => reportError(error, "Saved boosts could not be loaded."));
+    if (areaName !== "local" || !changes[BOOST_STORAGE_KEY]) {
+      return;
     }
+    // Don't blow away in-progress edits; reload once the editor closes instead.
+    if (editingId) {
+      pendingReload = true;
+      return;
+    }
+    void loadRules().catch((error) => reportError(error, "Saved boosts could not be loaded."));
   });
 
-  void loadRules().catch((error) => reportError(error, "Saved boosts could not be loaded."));
+  void (async () => {
+    await loadRules().catch((error) => reportError(error, "Saved boosts could not be loaded."));
+
+    // manage.html?edit=<id> opens that rule's editor (e.g. from the popup's Edit link).
+    const editId = new URLSearchParams(window.location.search).get("edit");
+    const target = editId ? allRules.find((entry) => entry.id === editId) : undefined;
+    if (target && isEditableBoost(target)) {
+      editingId = target.id;
+      renderList();
+      document
+        .querySelector(`li[data-rule-id="${target.id}"]`)
+        ?.scrollIntoView({ block: "center" });
+    }
+  })();
 }
 
 render();

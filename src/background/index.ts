@@ -1,4 +1,10 @@
-import { getSiteKeyFromUrl, isNonEmptyString, normalizeStoredRule } from "../shared/rules";
+import {
+  CUSTOM_CSS_UNSAFE_MESSAGE,
+  EDITABLE_KEYS,
+  getSiteKeyFromUrl,
+  isNonEmptyString,
+  normalizeStoredRule,
+} from "../shared/rules";
 import { getAllBoostRules, migrateLegacyRules, setAllBoostRules } from "../shared/storage";
 import type {
   BackgroundToContentMessage,
@@ -8,6 +14,8 @@ import type {
   ImportBoostsResponse,
   RuntimeMessage,
   SiteSummary,
+  UpdateBoostPayload,
+  UpdateBoostResponse,
 } from "../shared/types";
 
 function logWarning(message: string, error?: unknown): void {
@@ -67,6 +75,54 @@ function addBoostRule(rule: BoostRule): Promise<BoostRule> {
 async function listBoostRules(siteKey?: string): Promise<BoostRule[]> {
   const rules = await getAllBoostRules();
   return siteKey ? rules.filter((rule) => rule.siteKey === siteKey) : rules;
+}
+
+/**
+ * Edits only the value fields of a saved boost. Values REPLACE the old set rather than
+ * merge, so a key the editor leaves out means "turned off" (e.g. one color of a
+ * recolor). The candidate is re-validated like any stored rule, and the rule keeps its
+ * array position because order is meaningful for CSS precedence.
+ */
+function updateBoostRule(payload: UpdateBoostPayload): Promise<UpdateBoostResponse> {
+  return updateRules((rules): { rules: BoostRule[] | null; result: UpdateBoostResponse } => {
+    const index = rules.findIndex((rule) => rule.id === payload.id);
+    if (index === -1) {
+      return { rules: null, result: { success: false, error: "That boost no longer exists." } };
+    }
+
+    const existing = rules[index];
+    const editable = EDITABLE_KEYS[existing.type];
+    if (editable.length === 0) {
+      return { rules: null, result: { success: false, error: "Zaps have nothing to edit." } };
+    }
+
+    const values = typeof payload.values === "object" && payload.values !== null ? payload.values : {};
+    const candidate: Record<string, unknown> = {
+      ...existing,
+      originalText: existing.type === "text" ? existing.originalText : undefined,
+    };
+    for (const key of editable) {
+      candidate[key] = values[key];
+    }
+
+    const rule = normalizeStoredRule(candidate);
+    if (!rule) {
+      return {
+        rules: null,
+        result: {
+          success: false,
+          error:
+            existing.type === "css"
+              ? CUSTOM_CSS_UNSAFE_MESSAGE
+              : "That boost has an invalid value and was not saved.",
+        },
+      };
+    }
+
+    const nextRules = [...rules];
+    nextRules[index] = rule;
+    return { rules: nextRules, result: { success: true, rule } };
+  });
 }
 
 function removeBoostRule(id: string): Promise<boolean> {
@@ -260,7 +316,13 @@ async function handleMessage(
       const pageTitle = sender.tab?.title || payload.pageTitle || pageUrl;
       const rule = buildRuleFromPayload(payload, getSiteKeyFromUrl(pageUrl), pageUrl, pageTitle);
       if (!rule) {
-        return { success: false, error: "That boost has an invalid value and was not saved." };
+        return {
+          success: false,
+          error:
+            payload.type === "css"
+              ? CUSTOM_CSS_UNSAFE_MESSAGE
+              : "That boost has an invalid value and was not saved.",
+        };
       }
       return { success: true, rule: await addBoostRule(rule) };
     }
@@ -285,6 +347,13 @@ async function handleMessage(
       return { success: true, removedCount: await removeAllBoostRules() };
     case "IMPORT_BOOSTS":
       return importBoostRules(message.payload.rules);
+    case "UPDATE_BOOST": {
+      const result = await updateBoostRule(message.payload);
+      if (result.success) {
+        await refreshTab(message.payload.tabId);
+      }
+      return result;
+    }
     default:
       return { success: false, error: "Unknown message." };
   }

@@ -1,7 +1,7 @@
 import "../popup/styles.css";
 
 import { describeBoostRule, escapeHtml, formatDate, TYPE_LABELS, ZAP_ICON_SVG } from "../shared/format";
-import { getSiteKeyFromUrl } from "../shared/rules";
+import { getSiteKeyFromUrl, isEditableBoost } from "../shared/rules";
 import type {
   ActiveTabContext,
   BoostRule,
@@ -63,6 +63,11 @@ function createBoostItemMarkup(rule: BoostRule): string {
         <p class="row-label"><span class="type-badge">${TYPE_LABELS[rule.type]}</span>${escapeHtml(describeBoostRule(rule))}</p>
         <p class="row-meta">${formatDate(rule.createdAt)} · <code>${escapeHtml(rule.selector)}</code></p>
       </div>
+      ${
+        isEditableBoost(rule)
+          ? `<a class="ghost-button" href="${chrome.runtime.getURL("manage.html")}?edit=${rule.id}" target="_blank" rel="noopener">Edit</a>`
+          : ""
+      }
       <button class="ghost-button" type="button" data-restore-id="${rule.id}">Restore</button>
     </li>
   `;

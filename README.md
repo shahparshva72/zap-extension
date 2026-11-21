@@ -44,7 +44,8 @@ like any other entry point.
 1. Open any regular `http` or `https` page.
 2. Click the extension icon to open the popup.
 3. Press `Boost mode`.
-4. Pick a tool from the tabs in the on-page HUD: **Zap**, **Recolor**, **Font**, or **Text**.
+4. Pick a tool from the tabs in the on-page HUD: **Zap**, **Recolor**, **Font**, **Text**,
+   **Style**, or **CSS**.
 5. Hover an element (it highlights), then click it:
    - **Zap** removes it immediately — click for permanent, `Shift`+click to remove it for
      this visit only (nothing is saved). If you change your mind right away, click `Undo`
@@ -60,6 +61,14 @@ like any other entry point.
      preview, and the same `Apply to whole page` option.
    - **Text** opens a textarea prefilled with the element's current text; edit it and
      Save to permanently replace that label.
+   - **Style** opens a no-code editor with sliders and dropdowns for the element's font
+     size, weight, line height, letter spacing, padding, corner radius, opacity, and
+     text alignment — each with a live preview, and the same `Apply to whole page`
+     option (size, padding, corners, and opacity stay element-only; for whole-page
+     text size, browser zoom is the better tool).
+   - **CSS** opens a stylesheet editor for the whole site — no element pick needed.
+     Click any element while it's open to insert that element's selector as a
+     ready-to-fill rule. Saving an empty stylesheet removes the site's saved CSS.
 6. Press `Esc` to close an open editor, or press it again (or use `Stop` in the popup) to
    leave Boost mode entirely.
 
@@ -80,7 +89,11 @@ Notes:
 Open `Manage all boosts` at the bottom of the popup to get a full-page view of every
 saved boost across every site:
 
-- Filter by type (Zap, Recolor, Font, Text) and search by site, label, selector, or value.
+- Filter by type (Zap, Recolor, Font, Text, Style, CSS) and search by site, label,
+  selector, or value.
+- Edit a saved boost's values in place: `Edit` opens an inline editor for Recolor,
+  Font, Text, Style, and CSS boosts (a zap has no values, so it only offers Restore).
+  Changes apply to open tabs right away. The popup's `Edit` link opens the same editor.
 - Restore individual boosts, restore everything for one site, or restore everything
   everywhere.
 - Export all saved boosts to a JSON file, or import a previously exported (or
@@ -93,15 +106,23 @@ saved boost across every site:
 - Use the popup to enter Boost mode on the active tab; tool selection then happens in
   the on-page HUD.
 - Each click saves a site-scoped rule (element selector + the change) to
-  `chrome.storage.local`, tagged with a type: `remove`, `recolor`, `font`, or `text`.
-- Zap, Recolor, and Font rules are applied by injecting CSS into the page (`display:
-  none`, `color`/`background-color`, or `font-family`, all `!important`). Text rules are
+  `chrome.storage.local`, tagged with a type: `remove`, `recolor`, `font`, `text`,
+  `style`, or `css`.
+- Zap, Recolor, Font, and Style rules are applied by injecting CSS into the page
+  (`display: none`, `color`/`background-color`, `font-family`, or the Style editor's
+  numeric properties, all `!important`). CSS rules are injected last and verbatim, so
+  the author gets exactly what they wrote. Text rules are
   applied by the content script directly setting `textContent` on matching elements, and
   are re-applied if the site's own JavaScript changes the DOM back. A text rule only
   replaces text that still matches what it was created for, so content the site has
   since changed (a counter, a different item) is left alone.
 - Colors and fonts are validated before they are saved, imported, or injected, so an
-  imported or hand-edited value can't inject arbitrary CSS.
+  imported or hand-edited value can't inject arbitrary CSS. Custom CSS is a whole
+  stylesheet, so it needs `{}`, `;`, and `@media` — but `url()`, `@import`,
+  `image-set()`, and backslashes are rejected because they could make the page load an
+  external resource (and attribute selectors plus `url()` can exfiltrate page data),
+  which would break Zap's zero-network-requests promise. Style rules only store numbers
+  and a text-align enum, so they can't carry CSS at all.
 - Restore individual boosts, all current-site boosts, or everything everywhere from the
   popup or the `Manage all boosts` page.
 
@@ -113,6 +134,12 @@ saved boost across every site:
 3. Commit, then tag and push, e.g. `git tag v0.2.0 && git push origin v0.2.0`. The
    `Release` GitHub Actions workflow builds the zip and publishes a GitHub Release with it
    attached. The tag must match the version, or the workflow fails.
+
+To publish a pre-release for testing, keep the numeric version and add a suffix to the tag
+only, e.g. `git tag v0.2.0-beta.1 && git push origin v0.2.0-beta.1`. The workflow marks it
+as a pre-release, so it does not replace the latest release that the install steps point
+to. Chrome only accepts numeric versions, so the suffix never goes in `package.json` or
+`public/manifest.json`. Tag `v0.2.0` later for the full release.
 
 The same zip can be uploaded to the Chrome Web Store.
 

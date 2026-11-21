@@ -1,6 +1,21 @@
-import { getSiteKeyFromUrl, isSafeCssValue } from "../shared/rules";
+import { FONT_PRESETS } from "../shared/fonts";
+import {
+  CUSTOM_CSS_UNSAFE_MESSAGE,
+  getSiteKeyFromUrl,
+  isSafeCssValue,
+  isSafeCustomCss,
+} from "../shared/rules";
 import { buildElementLabel, buildElementSelector } from "../shared/selector";
 import { BOOST_STORAGE_KEY, getAllBoostRules } from "../shared/storage";
+import {
+  FONT_WEIGHT_OPTIONS,
+  STYLE_NUMERIC_PROPS,
+  TEXT_ALIGN_LABEL,
+  TEXT_ALIGN_VALUES,
+  formatStyleReadout,
+  styleDeclarations,
+  type StylePropSpec,
+} from "../shared/style";
 import type {
   BackgroundToContentMessage,
   BoostRule,
@@ -8,6 +23,8 @@ import type {
   BoostType,
   CreateBoostPayload,
   CreateBoostResponse,
+  StyleValues,
+  TextAlign,
 } from "../shared/types";
 
 const OVERLAY_ROOT_ATTRIBUTE = "data-zap-extension-root";
@@ -35,6 +52,8 @@ const TOOL_LABELS: Record<BoostType, string> = {
   recolor: "Recolor",
   font: "Font",
   text: "Text",
+  style: "Style",
+  css: "CSS",
 };
 
 const TOOL_HINTS: Record<BoostType, string> = {
@@ -42,18 +61,12 @@ const TOOL_HINTS: Record<BoostType, string> = {
   recolor: "Click an element to change its text or background color.",
   font: "Click an element to change its font.",
   text: "Click an element to edit its text.",
+  style: "Click an element to tune its size, spacing, and other style settings.",
+  css: "Write CSS for this site. Click any element to insert its selector.",
 };
 
-const FONT_PRESETS: Array<{ label: string; value: string }> = [
-  { label: "System Sans", value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
-  { label: "System Serif", value: "Georgia, 'Times New Roman', serif" },
-  { label: "System Mono", value: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace" },
-  { label: "Rounded", value: "'Segoe UI Rounded', 'SF Pro Rounded', system-ui, sans-serif" },
-  { label: "Comic", value: "'Comic Sans MS', 'Comic Sans', cursive" },
-];
-
 interface EditSession {
-  tool: "recolor" | "font" | "text";
+  tool: "recolor" | "font" | "text" | "style" | "css";
   target: Element;
   originalText: string;
   // Only true when the editor offers a text field; otherwise the element's text is never
@@ -396,6 +409,65 @@ function fontCss(selector: string, scope: BoostScope, fontFamily: string): strin
   return `${target} { font-family: ${fontFamily} !important; }`;
 }
 
+function styleCss(selector: string, scope: BoostScope, values: StyleValues): string {
+  const declarations = styleDeclarations(values);
+  if (!declarations) {
+    return "";
+  }
+
+  const target = scope === "page" ? `${boosted("html")}, ${boosted("html")} *` : boosted(selector);
+  return `${target} { ${declarations} }`;
+}
+
+function parsePx(value: string): number | null {
+  const match = value.match(/^(-?[\d.]+)px$/);
+  return match ? Number(match[1]) : null;
+}
+
+function snapToSpec(spec: StylePropSpec, value: number): number {
+  const snapped = spec.min + Math.round((value - spec.min) / spec.step) * spec.step;
+  return Math.min(spec.max, Math.max(spec.min, snapped));
+}
+
+// Starting points for the Style editor's controls when no rule exists yet: whatever
+// the element already computes to, clamped to each spec's range and snapped to its step.
+function initialStyleValues(target: Element): StyleValues {
+  const computed = getComputedStyle(target);
+  const fontSize = parsePx(computed.fontSize) ?? 16;
+  const lineHeightPx = parsePx(computed.lineHeight);
+  const computedWeight = Number(computed.fontWeight);
+  const align = computed.textAlign;
+
+  const raw: Record<string, number> = {
+    fontSize,
+    fontWeight: Number.isFinite(computedWeight)
+      ? FONT_WEIGHT_OPTIONS.reduce((best, option) =>
+          Math.abs(option.value - computedWeight) < Math.abs(best.value - computedWeight)
+            ? option
+            : best,
+        ).value
+      : 400,
+    lineHeight: lineHeightPx === null ? 1.2 : lineHeightPx / fontSize,
+    letterSpacing: parsePx(computed.letterSpacing) ?? 0,
+    padding: parsePx(computed.paddingTop) ?? 0,
+    borderRadius: parsePx(computed.borderTopLeftRadius) ?? 0,
+    opacity: Number.isFinite(Number(computed.opacity)) ? Number(computed.opacity) : 1,
+  };
+
+  const values: StyleValues = {
+    textAlign:
+      align === "end"
+        ? "right"
+        : TEXT_ALIGN_VALUES.includes(align as TextAlign)
+          ? (align as TextAlign)
+          : "left",
+  };
+  for (const spec of STYLE_NUMERIC_PROPS) {
+    values[spec.key] = snapToSpec(spec, raw[spec.key]);
+  }
+  return values;
+}
+
 function setPreviewCss(css: string): void {
   let preview = document.getElementById(PREVIEW_STYLE_ID);
   if (!css) {
@@ -427,6 +499,7 @@ class BoostPicker {
   private tabButtons: Partial<Record<BoostType, HTMLButtonElement>> = {};
   private lastAction: PendingAction | null = null;
   private editSession: EditSession | null = null;
+  private cssTextarea: HTMLTextAreaElement | null = null;
 
   enter(): void {
     if (this.active) {
@@ -521,11 +594,18 @@ class BoostPicker {
     hud.style.fontSize = "12px";
     hud.style.lineHeight = "1.5";
     hud.style.letterSpacing = "0.01em";
+    hud.style.fontWeight = "400";
+    hud.style.textAlign = "left";
     hud.style.boxShadow = "0 12px 28px rgba(0, 0, 0, 0.32)";
     hud.style.pointerEvents = "auto";
+    // Six tabs and the tall Style editor don't fit in a small fixed panel, so the HUD
+    // wraps its tabs and scrolls instead of growing past the viewport.
+    hud.style.maxHeight = "calc(100vh - 40px)";
+    hud.style.overflowY = "auto";
 
     const tabsRow = document.createElement("div");
     tabsRow.style.display = "flex";
+    tabsRow.style.flexWrap = "wrap";
     tabsRow.style.gap = "4px";
     tabsRow.style.marginBottom = "8px";
 
@@ -591,6 +671,11 @@ class BoostPicker {
 
   private setActiveTool(tool: BoostType): void {
     if (this.activeTool === tool) {
+      // The CSS editor is opened by the tab itself, so re-clicking it reopens the
+      // editor after Save/Cancel closed it.
+      if (tool === "css" && !this.editSession) {
+        this.openCssEditor();
+      }
       return;
     }
 
@@ -598,6 +683,9 @@ class BoostPicker {
     this.activeTool = tool;
     this.syncTabButtonStyles();
     this.updateHud(TOOL_HINTS[tool]);
+    if (tool === "css") {
+      this.openCssEditor();
+    }
   }
 
   private updateHud(text: string): void {
@@ -654,6 +742,7 @@ class BoostPicker {
 
   private closeEditSession(): void {
     this.editSession = null;
+    this.cssTextarea = null;
     this.clearHighlight();
     if (this.editorPanel) {
       this.editorPanel.style.display = "none";
@@ -982,6 +1071,409 @@ class BoostPicker {
     });
   }
 
+  private openStyleValuesEditor(target: Element): void {
+    const panel = this.editorPanel;
+    if (!panel) {
+      return;
+    }
+
+    // Read the starting values before anything about the page changes.
+    const selector = buildElementSelector(target);
+    const label = buildElementLabel(target);
+    const existing = currentRules.find(
+      (rule) => rule.type === "style" && rule.scope === "element" && rule.selector === selector,
+    );
+    const existingStyle = existing?.type === "style" ? existing : undefined;
+    const initial: StyleValues = { ...initialStyleValues(target) };
+    if (existingStyle) {
+      for (const spec of STYLE_NUMERIC_PROPS) {
+        if (typeof existingStyle[spec.key] === "number") {
+          initial[spec.key] = existingStyle[spec.key];
+        }
+      }
+      if (existingStyle.textAlign) {
+        initial.textAlign = existingStyle.textAlign;
+      }
+    }
+
+    this.editSession = { tool: "style", target, originalText: "", editsText: false };
+    this.highlight(target, "selected");
+
+    // Saving replaces this element's existing style boost, so take it out of the saved
+    // stylesheet while editing; the preview then shows exactly what Save will produce.
+    if (existing) {
+      renderSavedCss(currentRules.filter((rule) => rule.id !== existing.id));
+    }
+
+    this.hideUndo();
+    this.updateHud("Turn on the settings you want, then Save.");
+
+    panel.innerHTML = "";
+    panel.style.display = "block";
+
+    const wholePageRow = createCheckboxRow("Apply to whole page");
+    const scopeOf = (): BoostScope => (wholePageRow.toggle.checked ? "page" : "element");
+
+    const pageNote = document.createElement("div");
+    pageNote.textContent =
+      "For whole-page text size, use your browser zoom (Ctrl/Cmd +) — Chrome remembers it per site.";
+    pageNote.style.fontSize = "10px";
+    pageNote.style.opacity = "0.6";
+    pageNote.style.marginTop = "6px";
+    pageNote.style.display = "none";
+
+    const valueRows: Array<{
+      spec: StylePropSpec;
+      row: HTMLDivElement;
+      toggle: HTMLInputElement;
+      read: () => number;
+    }> = [];
+    let alignToggle: HTMLInputElement;
+    let alignSelect: HTMLSelectElement;
+
+    const collectValues = (): StyleValues => {
+      const scope = scopeOf();
+      const values: StyleValues = {};
+      for (const entry of valueRows) {
+        if (entry.toggle.checked && (scope === "element" || entry.spec.pageScope)) {
+          values[entry.spec.key] = entry.read();
+        }
+      }
+      if (alignToggle.checked) {
+        values.textAlign = alignSelect.value as TextAlign;
+      }
+      return values;
+    };
+
+    const applyPreview = () => {
+      const scope = scopeOf();
+      setPreviewCss(styleCss(scope === "page" ? "html" : selector, scope, collectValues()));
+    };
+
+    const buildControl = (
+      labelText: string,
+      control: HTMLInputElement | HTMLSelectElement,
+    ): { row: HTMLDivElement; toggle: HTMLInputElement; readout: HTMLSpanElement } => {
+      const row = document.createElement("div");
+      styleFormRow(row);
+
+      const toggle = document.createElement("input");
+      toggle.type = "checkbox";
+
+      const labelEl = document.createElement("label");
+      labelEl.style.display = "flex";
+      labelEl.style.alignItems = "center";
+      labelEl.style.gap = "6px";
+      labelEl.style.width = "86px";
+      labelEl.style.fontSize = "11px";
+      labelEl.append(toggle, document.createTextNode(` ${labelText}`));
+
+      control.style.flex = "1";
+      control.style.minWidth = "0";
+      control.style.font = "inherit";
+      control.style.fontSize = "11px";
+      control.style.color = "#f2f1ec";
+      control.style.background = "rgba(255, 255, 255, 0.08)";
+      control.style.border = "1px solid rgba(255, 255, 255, 0.18)";
+      control.style.borderRadius = "4px";
+
+      const readout = document.createElement("span");
+      readout.style.fontSize = "10px";
+      readout.style.opacity = "0.7";
+      readout.style.minWidth = "36px";
+      readout.style.textAlign = "right";
+
+      row.append(labelEl, control, readout);
+      return { row, toggle, readout };
+    };
+
+    for (const spec of STYLE_NUMERIC_PROPS) {
+      let control: HTMLInputElement | HTMLSelectElement;
+      if (spec.key === "fontWeight") {
+        const select = document.createElement("select");
+        for (const option of FONT_WEIGHT_OPTIONS) {
+          const item = document.createElement("option");
+          item.value = String(option.value);
+          item.textContent = `${option.label} ${option.value}`;
+          select.append(item);
+        }
+        select.value = String(initial.fontWeight ?? 400);
+        control = select;
+      } else {
+        const range = document.createElement("input");
+        range.type = "range";
+        range.min = String(spec.min);
+        range.max = String(spec.max);
+        range.step = String(spec.step);
+        range.value = String(initial[spec.key] ?? spec.min);
+        control = range;
+      }
+
+      const { row, toggle, readout } = buildControl(spec.label, control);
+      toggle.checked = typeof existingStyle?.[spec.key] === "number";
+      const syncReadout = () => {
+        readout.textContent = formatStyleReadout(spec, Number(control.value));
+      };
+      syncReadout();
+
+      // Moving a control is intent enough: it turns its row on automatically.
+      control.addEventListener("input", () => {
+        toggle.checked = true;
+        syncReadout();
+        applyPreview();
+      });
+      control.addEventListener("change", () => {
+        toggle.checked = true;
+        syncReadout();
+        applyPreview();
+      });
+      toggle.addEventListener("change", applyPreview);
+
+      valueRows.push({ spec, row, toggle, read: () => Number(control.value) });
+      panel.append(row);
+    }
+
+    {
+      const select = document.createElement("select");
+      for (const value of TEXT_ALIGN_VALUES) {
+        const item = document.createElement("option");
+        item.value = value;
+        item.textContent = value[0].toUpperCase() + value.slice(1);
+        select.append(item);
+      }
+      select.value = initial.textAlign ?? "left";
+      const { row, toggle, readout } = buildControl(TEXT_ALIGN_LABEL, select);
+      toggle.checked = Boolean(existingStyle?.textAlign);
+      const syncReadout = () => {
+        readout.textContent = select.value;
+      };
+      syncReadout();
+      select.addEventListener("input", () => {
+        toggle.checked = true;
+        syncReadout();
+        applyPreview();
+      });
+      select.addEventListener("change", () => {
+        toggle.checked = true;
+        syncReadout();
+        applyPreview();
+      });
+      toggle.addEventListener("change", applyPreview);
+      alignToggle = toggle;
+      alignSelect = select;
+      panel.append(row);
+    }
+
+    // Element-only rows (Size, Padding, Corners, Opacity) don't apply at page scope.
+    const syncScopeRows = () => {
+      const page = wholePageRow.toggle.checked;
+      pageNote.style.display = page ? "block" : "none";
+      for (const entry of valueRows) {
+        if (!entry.spec.pageScope) {
+          entry.row.style.display = page ? "none" : "flex";
+        }
+      }
+    };
+    wholePageRow.toggle.addEventListener("change", () => {
+      syncScopeRows();
+      applyPreview();
+    });
+
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.textContent = "Save";
+    styleActionButton(saveButton, "accent");
+
+    const cancelButton = document.createElement("button");
+    cancelButton.type = "button";
+    cancelButton.textContent = "Cancel";
+    styleActionButton(cancelButton, "muted");
+
+    const actionsRow = document.createElement("div");
+    styleFormRow(actionsRow);
+    actionsRow.append(saveButton, cancelButton);
+
+    panel.prepend(wholePageRow.row);
+    panel.append(pageNote, actionsRow);
+
+    syncScopeRows();
+    applyPreview();
+
+    saveButton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const scope = scopeOf();
+      const values = collectValues();
+      if (Object.keys(values).length === 0) {
+        this.updateHud("Turn on at least one setting before saving.");
+        return;
+      }
+
+      const scopeLabel = scope === "page" ? "Whole page" : label;
+      await this.commitEdits(
+        [
+          {
+            type: "style",
+            selector: scope === "page" ? "html" : selector,
+            label: scopeLabel,
+            pageUrl: window.location.href,
+            pageTitle: document.title,
+            scope,
+            ...values,
+          },
+        ],
+        `Saved style for "${scopeLabel}".`,
+      );
+    });
+
+    cancelButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.revertPreview();
+      this.closeEditSession();
+      this.updateHud(TOOL_HINTS[this.activeTool]);
+    });
+  }
+
+  private openCssEditor(): void {
+    const panel = this.editorPanel;
+    if (!panel) {
+      return;
+    }
+
+    const existing = currentRules.find((rule) => rule.type === "css");
+
+    // The target is only a placeholder; a css session never draws the "selected"
+    // outline and never touches the element.
+    this.editSession = {
+      tool: "css",
+      target: document.documentElement,
+      originalText: "",
+      editsText: false,
+    };
+
+    // Take the existing rule out of the saved stylesheet so the preview shows exactly
+    // what Save will produce.
+    if (existing) {
+      renderSavedCss(currentRules.filter((rule) => rule.id !== existing.id));
+    }
+
+    this.hideUndo();
+    this.updateHud(TOOL_HINTS.css);
+
+    panel.innerHTML = "";
+    panel.style.display = "block";
+
+    const textarea = document.createElement("textarea");
+    textarea.value = existing?.css ?? "";
+    textarea.rows = 10;
+    textarea.spellcheck = false;
+    textarea.placeholder = ".sidebar { display: none; }";
+    styleTextInput(textarea);
+    this.cssTextarea = textarea;
+
+    const applyPreview = () => {
+      const css = textarea.value;
+      setPreviewCss(isSafeCustomCss(css) ? css : "");
+    };
+    textarea.addEventListener("input", applyPreview);
+    // Tab inside the stylesheet indents instead of moving focus out of the editor.
+    textarea.addEventListener("keydown", (event) => {
+      if (event.key !== "Tab") {
+        return;
+      }
+      event.preventDefault();
+      const { selectionStart: start, selectionEnd: end } = textarea;
+      textarea.value = `${textarea.value.slice(0, start)}  ${textarea.value.slice(end)}`;
+      textarea.selectionStart = textarea.selectionEnd = start + 2;
+      applyPreview();
+    });
+
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.textContent = "Save";
+    styleActionButton(saveButton, "accent");
+
+    const cancelButton = document.createElement("button");
+    cancelButton.type = "button";
+    cancelButton.textContent = "Cancel";
+    styleActionButton(cancelButton, "muted");
+
+    const actionsRow = document.createElement("div");
+    styleFormRow(actionsRow);
+    actionsRow.append(saveButton, cancelButton);
+
+    panel.append(textarea, actionsRow);
+    applyPreview();
+
+    saveButton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const css = textarea.value;
+      if (!css.trim()) {
+        if (!existing) {
+          this.updateHud("Write some CSS before saving.");
+          return;
+        }
+        // Saving an empty sheet over an existing rule deletes the rule.
+        await restoreRule(existing.id);
+        await refreshAppliedRules();
+        this.revertPreview();
+        this.closeEditSession();
+        this.updateHud("Removed custom CSS for this site.");
+        return;
+      }
+
+      if (!isSafeCustomCss(css)) {
+        this.updateHud(CUSTOM_CSS_UNSAFE_MESSAGE);
+        return;
+      }
+
+      await this.commitEdits(
+        [
+          {
+            type: "css",
+            selector: "html",
+            label: "Custom CSS",
+            pageUrl: window.location.href,
+            pageTitle: document.title,
+            css,
+          },
+        ],
+        "Saved custom CSS for this site.",
+      );
+    });
+
+    cancelButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.revertPreview();
+      this.closeEditSession();
+      this.updateHud(TOOL_HINTS[this.activeTool]);
+    });
+  }
+
+  // While the CSS editor is open, clicking a page element appends a ready-to-fill rule
+  // for it instead of closing the session.
+  private insertCssSelector(target: Element): void {
+    const textarea = this.cssTextarea;
+    if (!textarea) {
+      return;
+    }
+
+    let snippet = `\n${buildElementSelector(target)} {\n  \n}\n`;
+    if (!textarea.value) {
+      snippet = snippet.slice(1);
+    }
+    textarea.value += snippet;
+    // Caret on the blank line inside the braces, ready to type declarations.
+    textarea.selectionStart = textarea.selectionEnd = textarea.value.length - 3;
+    textarea.focus();
+    textarea.dispatchEvent(new Event("input"));
+  }
+
   private async performRemove(target: Element, sessionOnly: boolean): Promise<void> {
     const originalStyle = target.getAttribute("style");
     const label = buildElementLabel(target);
@@ -1056,7 +1548,7 @@ class BoostPicker {
   };
 
   private handleViewportChange = (): void => {
-    if (this.editSession) {
+    if (this.editSession && this.editSession.tool !== "css") {
       this.highlight(this.editSession.target, "selected");
     } else if (this.highlightedElement) {
       this.highlight(this.highlightedElement);
@@ -1083,8 +1575,9 @@ class BoostPicker {
 
   private handlePointerMove = (event: MouseEvent): void => {
     // While editing, keep the outline locked on the element being edited so the hover
-    // highlight doesn't cover up the live preview.
-    if (this.editSession) {
+    // highlight doesn't cover up the live preview. The CSS editor has no selected
+    // element, so hover keeps working there.
+    if (this.editSession && this.editSession.tool !== "css") {
       return;
     }
 
@@ -1134,6 +1627,15 @@ class BoostPicker {
       return;
     }
 
+    // With the CSS editor open, a page click inserts that element's selector into the
+    // stylesheet instead of closing the session.
+    if (this.editSession?.tool === "css") {
+      if (target) {
+        this.insertCssSelector(target);
+      }
+      return;
+    }
+
     if (this.activeTool === "remove") {
       await this.performRemove(target, event.shiftKey);
       this.clearHighlight();
@@ -1143,7 +1645,11 @@ class BoostPicker {
     this.cancelEditSession();
     if (this.activeTool === "text") {
       this.openTextEditor(target);
-    } else {
+    } else if (this.activeTool === "style") {
+      this.openStyleValuesEditor(target);
+    } else if (this.activeTool === "css") {
+      this.openCssEditor();
+    } else if (this.activeTool === "recolor" || this.activeTool === "font") {
       this.openStyleEditor(this.activeTool, target);
     }
   };
@@ -1258,6 +1764,9 @@ function ensureStyleElement(): HTMLStyleElement {
 
 function buildRuleCss(rules: BoostRule[]): string {
   const blocks: string[] = [];
+  // Custom CSS goes last and raw: no specificity boost (the author gets exactly what
+  // they wrote), and a malformed sheet can't swallow Zap's own rules ahead of it.
+  const customCss: string[] = [];
 
   // Rules are stored newest first; emit oldest first so that when two rules touch the same
   // element, the newer one comes later in the stylesheet and wins.
@@ -1276,10 +1785,16 @@ function buildRuleCss(rules: BoostRule[]): string {
       case "font":
         blocks.push(fontCss(rule.selector, rule.scope, rule.fontFamily));
         break;
+      case "style":
+        blocks.push(styleCss(rule.selector, rule.scope, rule));
+        break;
+      case "css":
+        customCss.push(rule.css);
+        break;
     }
   }
 
-  return blocks.filter(Boolean).join("\n");
+  return [...blocks.filter(Boolean), ...customCss].join("\n");
 }
 
 function renderSavedCss(rules: BoostRule[]): void {
@@ -1290,6 +1805,12 @@ function normalizeText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+// What each element's text was when Zap last wrote it, and by which rule. When a text
+// rule's newText is edited on the manage page, the open tab still shows the old
+// replacement — which no longer matches originalText — so this lets the next pass
+// recognize the element as still showing exactly what Zap wrote and re-replace it.
+const appliedText = new WeakMap<Element, { ruleId: string; text: string }>();
+
 function applyTextRules(rules: BoostRule[]): void {
   for (const rule of rules) {
     if (rule.type !== "text" || !isSelectorValid(rule.selector)) {
@@ -1299,15 +1820,23 @@ function applyTextRules(rules: BoostRule[]): void {
     const originalText = normalizeText(rule.originalText);
     document.querySelectorAll(rule.selector).forEach((element) => {
       const current = element.textContent ?? "";
+      const applied = appliedText.get(element);
       if (current === rule.newText) {
+        // Record HUD-previewed text too, so a later edit can still find the element.
+        if (!applied) {
+          appliedText.set(element, { ruleId: rule.id, text: current });
+        }
         return;
       }
       // Only replace the text the rule was made for, so content the site has since
-      // changed (a counter, a timestamp, a different item) isn't overwritten.
-      if (originalText && normalizeText(current) !== originalText) {
+      // changed (a counter, a timestamp, a different item) isn't overwritten. An
+      // element still showing this rule's previous rewrite counts as unchanged too.
+      const stillOurs = applied?.ruleId === rule.id && applied.text === current;
+      if (!stillOurs && originalText && normalizeText(current) !== originalText) {
         return;
       }
       element.textContent = rule.newText;
+      appliedText.set(element, { ruleId: rule.id, text: rule.newText });
     });
   }
 }

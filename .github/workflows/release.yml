@@ -2,6 +2,8 @@ name: Release
 
 # Push a tag like v0.2.0 (matching the version in package.json and public/manifest.json)
 # to build the extension and publish a GitHub Release with the zip attached.
+# A tag with a suffix, like v0.2.0-beta.1, publishes the same version as a pre-release:
+# Chrome only accepts numeric versions, so the suffix lives in the tag alone.
 on:
   push:
     tags:
@@ -25,16 +27,27 @@ jobs:
       - run: npm run check
 
       - name: Check tag matches version
+        id: tag
         run: |
           version="$(node -p "require('./package.json').version")"
-          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
-            echo "Tag ${GITHUB_REF_NAME} does not match package.json version v${version}."
-            exit 1
-          fi
+          case "${GITHUB_REF_NAME}" in
+            "v${version}") echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+            "v${version}-"?*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "Tag ${GITHUB_REF_NAME} does not match package.json version v${version}."
+              exit 1
+              ;;
+          esac
 
       - run: npm run release
 
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" release/*.zip --title "${GITHUB_REF_NAME}" --generate-notes
+          PRERELEASE: ${{ steps.tag.outputs.prerelease }}
+        run: |
+          flags=()
+          if [ "${PRERELEASE}" = "true" ]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "${GITHUB_REF_NAME}" release/*.zip --title "${GITHUB_REF_NAME}" --generate-notes "${flags[@]}"
