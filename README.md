@@ -91,6 +91,9 @@ saved boost across every site:
 
 - Filter by type (Zap, Recolor, Font, Text, Style, CSS) and search by site, label,
   selector, or value.
+- Edit a saved boost's values in place: `Edit` opens an inline editor for Recolor,
+  Font, Text, Style, and CSS boosts (a zap has no values, so it only offers Restore).
+  Changes apply to open tabs right away. The popup's `Edit` link opens the same editor.
 - Restore individual boosts, restore everything for one site, or restore everything
   everywhere.
 - Export all saved boosts to a JSON file, or import a previously exported (or

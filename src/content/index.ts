@@ -1,10 +1,18 @@
-import { getSiteKeyFromUrl, isSafeCssValue, isSafeCustomCss } from "../shared/rules";
+import { FONT_PRESETS } from "../shared/fonts";
+import {
+  CUSTOM_CSS_UNSAFE_MESSAGE,
+  getSiteKeyFromUrl,
+  isSafeCssValue,
+  isSafeCustomCss,
+} from "../shared/rules";
 import { buildElementLabel, buildElementSelector } from "../shared/selector";
 import { BOOST_STORAGE_KEY, getAllBoostRules } from "../shared/storage";
 import {
+  FONT_WEIGHT_OPTIONS,
   STYLE_NUMERIC_PROPS,
   TEXT_ALIGN_LABEL,
   TEXT_ALIGN_VALUES,
+  formatStyleReadout,
   styleDeclarations,
   type StylePropSpec,
 } from "../shared/style";
@@ -56,17 +64,6 @@ const TOOL_HINTS: Record<BoostType, string> = {
   style: "Click an element to tune its size, spacing, and other style settings.",
   css: "Write CSS for this site. Click any element to insert its selector.",
 };
-
-const CUSTOM_CSS_UNSAFE_MESSAGE =
-  "Custom CSS can't use url(), @import, or backslashes, so pages never load anything external.";
-
-const FONT_PRESETS: Array<{ label: string; value: string }> = [
-  { label: "System Sans", value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
-  { label: "System Serif", value: "Georgia, 'Times New Roman', serif" },
-  { label: "System Mono", value: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace" },
-  { label: "Rounded", value: "'Segoe UI Rounded', 'SF Pro Rounded', system-ui, sans-serif" },
-  { label: "Comic", value: "'Comic Sans MS', 'Comic Sans', cursive" },
-];
 
 interface EditSession {
   tool: "recolor" | "font" | "text" | "style" | "css";
@@ -422,15 +419,6 @@ function styleCss(selector: string, scope: BoostScope, values: StyleValues): str
   return `${target} { ${declarations} }`;
 }
 
-const FONT_WEIGHT_OPTIONS: Array<{ label: string; value: number }> = [
-  { label: "Light", value: 300 },
-  { label: "Normal", value: 400 },
-  { label: "Medium", value: 500 },
-  { label: "Semibold", value: 600 },
-  { label: "Bold", value: 700 },
-  { label: "Black", value: 900 },
-];
-
 function parsePx(value: string): number | null {
   const match = value.match(/^(-?[\d.]+)px$/);
   return match ? Number(match[1]) : null;
@@ -478,13 +466,6 @@ function initialStyleValues(target: Element): StyleValues {
     values[spec.key] = snapToSpec(spec, raw[spec.key]);
   }
   return values;
-}
-
-function formatStyleReadout(spec: StylePropSpec, value: number): string {
-  if (spec.key === "opacity") {
-    return `${Math.round(value * 100)}%`;
-  }
-  return `${Math.round(value * 100) / 100}${spec.unit}`;
 }
 
 function setPreviewCss(css: string): void {
@@ -1824,6 +1805,12 @@ function normalizeText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+// What each element's text was when Zap last wrote it, and by which rule. When a text
+// rule's newText is edited on the manage page, the open tab still shows the old
+// replacement — which no longer matches originalText — so this lets the next pass
+// recognize the element as still showing exactly what Zap wrote and re-replace it.
+const appliedText = new WeakMap<Element, { ruleId: string; text: string }>();
+
 function applyTextRules(rules: BoostRule[]): void {
   for (const rule of rules) {
     if (rule.type !== "text" || !isSelectorValid(rule.selector)) {
@@ -1833,15 +1820,23 @@ function applyTextRules(rules: BoostRule[]): void {
     const originalText = normalizeText(rule.originalText);
     document.querySelectorAll(rule.selector).forEach((element) => {
       const current = element.textContent ?? "";
+      const applied = appliedText.get(element);
       if (current === rule.newText) {
+        // Record HUD-previewed text too, so a later edit can still find the element.
+        if (!applied) {
+          appliedText.set(element, { ruleId: rule.id, text: current });
+        }
         return;
       }
       // Only replace the text the rule was made for, so content the site has since
-      // changed (a counter, a timestamp, a different item) isn't overwritten.
-      if (originalText && normalizeText(current) !== originalText) {
+      // changed (a counter, a timestamp, a different item) isn't overwritten. An
+      // element still showing this rule's previous rewrite counts as unchanged too.
+      const stillOurs = applied?.ruleId === rule.id && applied.text === current;
+      if (!stillOurs && originalText && normalizeText(current) !== originalText) {
         return;
       }
       element.textContent = rule.newText;
+      appliedText.set(element, { ruleId: rule.id, text: rule.newText });
     });
   }
 }

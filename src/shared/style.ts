@@ -11,24 +11,43 @@ export interface StylePropSpec {
   step: number;
   pageScope: boolean;
   label: string;
+  // Used when there is no element to read a starting value from (e.g. the manage-page
+  // editor).
+  fallback: number;
 }
+
+export const FONT_WEIGHT_OPTIONS: Array<{ label: string; value: number }> = [
+  { label: "Light", value: 300 },
+  { label: "Normal", value: 400 },
+  { label: "Medium", value: 500 },
+  { label: "Semibold", value: 600 },
+  { label: "Bold", value: 700 },
+  { label: "Black", value: 900 },
+];
 
 // Single source of truth for the Style tool: validation, CSS output, the HUD editor,
 // and descriptions all derive from this table. fontSize/padding/borderRadius/opacity
 // are element-only because page-wide px overrides wreck layouts — the editor points
 // users at browser zoom for whole-page text size instead.
 export const STYLE_NUMERIC_PROPS: StylePropSpec[] = [
-  { key: "fontSize", property: "font-size", unit: "px", min: 8, max: 96, step: 1, pageScope: false, label: "Size" },
-  { key: "fontWeight", property: "font-weight", unit: "", min: 100, max: 900, step: 100, pageScope: true, label: "Weight" },
-  { key: "lineHeight", property: "line-height", unit: "", min: 1, max: 3, step: 0.1, pageScope: true, label: "Line height" },
-  { key: "letterSpacing", property: "letter-spacing", unit: "px", min: -2, max: 10, step: 0.5, pageScope: true, label: "Letter spacing" },
-  { key: "padding", property: "padding", unit: "px", min: 0, max: 64, step: 1, pageScope: false, label: "Padding" },
-  { key: "borderRadius", property: "border-radius", unit: "px", min: 0, max: 48, step: 1, pageScope: false, label: "Corners" },
-  { key: "opacity", property: "opacity", unit: "", min: 0.1, max: 1, step: 0.05, pageScope: false, label: "Opacity" },
+  { key: "fontSize", property: "font-size", unit: "px", min: 8, max: 96, step: 1, pageScope: false, label: "Size", fallback: 16 },
+  { key: "fontWeight", property: "font-weight", unit: "", min: 100, max: 900, step: 100, pageScope: true, label: "Weight", fallback: 400 },
+  { key: "lineHeight", property: "line-height", unit: "", min: 1, max: 3, step: 0.1, pageScope: true, label: "Line height", fallback: 1.5 },
+  { key: "letterSpacing", property: "letter-spacing", unit: "px", min: -2, max: 10, step: 0.5, pageScope: true, label: "Letter spacing", fallback: 0 },
+  { key: "padding", property: "padding", unit: "px", min: 0, max: 64, step: 1, pageScope: false, label: "Padding", fallback: 0 },
+  { key: "borderRadius", property: "border-radius", unit: "px", min: 0, max: 48, step: 1, pageScope: false, label: "Corners", fallback: 0 },
+  { key: "opacity", property: "opacity", unit: "", min: 0.1, max: 1, step: 0.05, pageScope: false, label: "Opacity", fallback: 1 },
 ];
 
 export const TEXT_ALIGN_VALUES: TextAlign[] = ["left", "center", "right", "justify"];
 export const TEXT_ALIGN_LABEL = "Align";
+
+export function formatStyleReadout(spec: StylePropSpec, value: number): string {
+  if (spec.key === "opacity") {
+    return `${Math.round(value * 100)}%`;
+  }
+  return `${Math.round(value * 100) / 100}${spec.unit}`;
+}
 
 function formatNumber(value: number): string {
   return String(Math.round(value * 100) / 100);

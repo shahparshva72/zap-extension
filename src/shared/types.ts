@@ -160,6 +160,16 @@ export interface RestoreAllBoostsResponse extends CommandResult {
   removedCount: number;
 }
 
+export interface UpdateBoostPayload {
+  id: string;
+  values: Record<string, unknown>;
+  tabId?: number;
+}
+
+export interface UpdateBoostResponse extends CommandResult {
+  rule?: BoostRule;
+}
+
 export interface ActiveTabContext {
   tabId: number;
   url: string;
@@ -174,7 +184,8 @@ export type PopupToBackgroundMessage =
   | { type: "RESTORE_BOOST"; payload: RestoreBoostPayload }
   | { type: "RESTORE_SITE_BOOSTS"; payload: RestoreSiteBoostsPayload }
   | { type: "RESTORE_ALL_BOOSTS"; payload: Record<string, never> }
-  | { type: "IMPORT_BOOSTS"; payload: ImportBoostsPayload };
+  | { type: "IMPORT_BOOSTS"; payload: ImportBoostsPayload }
+  | { type: "UPDATE_BOOST"; payload: UpdateBoostPayload };
 
 export type ContentToBackgroundMessage = {
   type: "CREATE_BOOST";

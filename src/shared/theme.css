@@ -233,6 +233,10 @@ input:focus-visible {
   opacity: 0.4;
 }
 
+a.ghost-button {
+  text-decoration: none;
+}
+
 .empty {
   margin: 0;
   padding: 4px 14px 14px;

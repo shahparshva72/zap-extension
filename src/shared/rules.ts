@@ -1,5 +1,5 @@
 import { normalizeStyleValues } from "./style";
-import type { BoostRule } from "./types";
+import type { BoostRule, BoostType } from "./types";
 
 const WWW_PREFIX = /^www\./i;
 
@@ -44,6 +44,33 @@ export function isSafeCustomCss(value: unknown): value is string {
   return (
     isNonEmptyString(value) && value.length <= MAX_CUSTOM_CSS_LENGTH && !UNSAFE_CUSTOM_CSS.test(value)
   );
+}
+
+export const CUSTOM_CSS_UNSAFE_MESSAGE =
+  "Custom CSS can't use url(), @import, or backslashes, so pages never load anything external.";
+
+// The rule fields a user may edit after saving. Identity fields (selector, scope,
+// site, label, type) are never editable; a remove rule has no values at all.
+export const EDITABLE_KEYS: Record<BoostType, readonly string[]> = {
+  remove: [],
+  recolor: ["textColor", "backgroundColor"],
+  font: ["fontFamily"],
+  text: ["newText"],
+  style: [
+    "fontSize",
+    "fontWeight",
+    "lineHeight",
+    "letterSpacing",
+    "padding",
+    "borderRadius",
+    "opacity",
+    "textAlign",
+  ],
+  css: ["css"],
+};
+
+export function isEditableBoost(rule: BoostRule): boolean {
+  return EDITABLE_KEYS[rule.type].length > 0;
 }
 
 export function isSafeSelector(value: unknown): value is string {
