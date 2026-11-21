@@ -28,6 +28,19 @@ export async function setAllBoostRules(rules: BoostRule[]): Promise<void> {
   await chrome.storage.local.remove(LEGACY_STORAGE_KEY);
 }
 
+export const PAUSED_SITES_STORAGE_KEY = "pausedSitesV1";
+
+/** SiteKeys with all boosts paused. Kept apart from the rules so it's not a per-rule flag. */
+export async function getPausedSites(): Promise<string[]> {
+  const result = await chrome.storage.local.get(PAUSED_SITES_STORAGE_KEY);
+  const sites = result[PAUSED_SITES_STORAGE_KEY];
+  return Array.isArray(sites) ? sites.filter((s): s is string => typeof s === "string") : [];
+}
+
+export async function setPausedSites(sites: string[]): Promise<void> {
+  await chrome.storage.local.set({ [PAUSED_SITES_STORAGE_KEY]: sites });
+}
+
 /** Moves pre-Boost `zapRulesV1` rules to the current key. Background only. */
 export async function migrateLegacyRules(): Promise<void> {
   const result = await chrome.storage.local.get([BOOST_STORAGE_KEY, LEGACY_STORAGE_KEY]);

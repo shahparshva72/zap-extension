@@ -109,6 +109,7 @@ export function normalizeStoredRule(entry: unknown): BoostRule | null {
     createdAt: record.createdAt,
     pageUrl: typeof record.pageUrl === "string" ? record.pageUrl : `https://${record.siteKey}/`,
     pageTitle: typeof record.pageTitle === "string" ? record.pageTitle : record.siteKey,
+    ...(record.disabled === true ? { disabled: true } : {}),
   };
   const scope = record.scope === "page" ? "page" : "element";
 

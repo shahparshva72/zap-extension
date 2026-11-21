@@ -46,6 +46,7 @@ const TYPE_FILTER_OPTIONS: Array<{ value: "all" | BoostType; label: string }> = 
 ];
 
 let allRules: BoostRule[] = [];
+let pausedSites: string[] = [];
 let searchQuery = "";
 let typeFilter: "all" | BoostType = "all";
 let isBusy = false;
@@ -104,7 +105,7 @@ function syncControlAvailability(): void {
 
   document
     .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-      ".boost-editor input, .boost-editor textarea, .boost-editor select",
+      ".boost-editor input, .boost-editor textarea, .boost-editor select, .boost-switch",
     )
     .forEach((control) => {
       control.disabled = isBusy;
@@ -173,7 +174,9 @@ function createRuleRowMarkup(rule: BoostRule): string {
     ? `<button class="ghost-button" type="button" data-edit-id="${rule.id}">Edit</button>`
     : "";
   return `
-    <li class="row${editingId === rule.id ? " row--editing" : ""}" data-rule-id="${rule.id}">
+    <li class="row${editingId === rule.id ? " row--editing" : ""}${rule.disabled ? " row--off" : ""}" data-rule-id="${rule.id}">
+      <input type="checkbox" class="boost-switch" data-toggle-id="${rule.id}" aria-label="Boost on"
+        title="Turn this boost on or off" ${rule.disabled ? "" : "checked"} />
       <div class="row-copy">
         <p class="row-label"><span class="type-badge">${TYPE_LABELS[rule.type]}</span>${escapeHtml(describeBoostRule(rule))}</p>
         <p class="row-meta">${formatDate(rule.createdAt)} · <code>${escapeHtml(rule.selector)}</code></p>
@@ -185,13 +188,21 @@ function createRuleRowMarkup(rule: BoostRule): string {
 }
 
 function createSiteGroupMarkup(siteKey: string, rules: BoostRule[]): string {
+  const paused = pausedSites.includes(siteKey);
   return `
     <section class="site-group">
       <div class="section-head">
-        <span class="section-title">${escapeHtml(siteKey)} <span class="count">${rules.length}</span></span>
-        <button class="text-button" type="button" data-restore-site="${escapeHtml(siteKey)}">Restore all</button>
+        <span class="section-title">${escapeHtml(siteKey)} <span class="count">${rules.length}</span>${
+          paused ? ` <span class="type-badge">Paused</span>` : ""
+        }</span>
+        <span class="section-actions">
+          <button class="text-button" type="button" data-pause-site="${escapeHtml(siteKey)}">${
+            paused ? "Resume site" : "Pause site"
+          }</button>
+          <button class="text-button" type="button" data-restore-site="${escapeHtml(siteKey)}">Restore all</button>
+        </span>
       </div>
-      <ul class="row-list">${rules.map(createRuleRowMarkup).join("")}</ul>
+      <ul class="row-list${paused ? " dimmed" : ""}">${rules.map(createRuleRowMarkup).join("")}</ul>
     </section>
   `;
 }
@@ -560,6 +571,58 @@ function renderList(): void {
 }
 
 function attachRowHandlers(): void {
+  document.querySelectorAll<HTMLInputElement>("[data-toggle-id]").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const id = input.dataset.toggleId;
+      if (!id) {
+        return;
+      }
+
+      dismissEditor();
+      setBusy(true);
+      try {
+        await sendRuntimeMessage({
+          type: "SET_BOOST_ENABLED",
+          payload: { id, enabled: input.checked },
+        });
+        await loadRules();
+        setStatusMessage(input.checked ? "Boost turned on." : "Boost turned off.");
+      } catch (error) {
+        reportError(error, "That boost could not be updated.");
+      } finally {
+        setBusy(false);
+      }
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>("[data-pause-site]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const siteKey = button.dataset.pauseSite;
+      if (!siteKey) {
+        return;
+      }
+
+      const pausing = !pausedSites.includes(siteKey);
+      dismissEditor();
+      setBusy(true);
+      setStatusMessage(pausing ? `Pausing boosts for ${siteKey}…` : `Resuming boosts for ${siteKey}…`);
+      try {
+        await sendRuntimeMessage({
+          type: "SET_SITE_PAUSED",
+          payload: { siteKey, paused: pausing },
+        });
+        await loadRules();
+        setStatusMessage(
+          pausing ? `Boosts paused on ${siteKey}.` : `Boosts resumed on ${siteKey}.`,
+        );
+      } catch (error) {
+        reportError(error, `Boosts for ${siteKey} could not be updated.`);
+      } finally {
+        setBusy(false);
+      }
+    });
+  });
+
   document.querySelectorAll<HTMLButtonElement>("[data-edit-id]").forEach((button) => {
     button.addEventListener("click", () => {
       const id = button.dataset.editId;
@@ -627,6 +690,7 @@ async function loadRules(): Promise<void> {
     payload: {},
   });
   allRules = data.siteRules;
+  pausedSites = data.pausedSites;
   renderList();
 }
 
@@ -656,6 +720,7 @@ function parseImportFile(raw: string): ImportableBoostRule[] {
     .filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
     .map((entry) => ({
       siteKey: typeof entry.siteKey === "string" ? entry.siteKey : "",
+      disabled: typeof entry.disabled === "boolean" ? entry.disabled : undefined,
       selector: typeof entry.selector === "string" ? entry.selector : "",
       label: typeof entry.label === "string" ? entry.label : "",
       type: typeof entry.type === "string" ? entry.type : undefined,

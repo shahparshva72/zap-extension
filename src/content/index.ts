@@ -1,12 +1,18 @@
 import { FONT_PRESETS } from "../shared/fonts";
 import {
   CUSTOM_CSS_UNSAFE_MESSAGE,
+  EDITABLE_KEYS,
   getSiteKeyFromUrl,
   isSafeCssValue,
   isSafeCustomCss,
 } from "../shared/rules";
 import { buildElementLabel, buildElementSelector } from "../shared/selector";
-import { BOOST_STORAGE_KEY, getAllBoostRules } from "../shared/storage";
+import {
+  BOOST_STORAGE_KEY,
+  PAUSED_SITES_STORAGE_KEY,
+  getAllBoostRules,
+  getPausedSites,
+} from "../shared/storage";
 import {
   FONT_WEIGHT_OPTIONS,
   STYLE_NUMERIC_PROPS,
@@ -78,7 +84,9 @@ type PendingAction =
   | { kind: "remove"; ruleId: string | null; element: Element; originalStyle: string | null }
   | {
       kind: "edit";
-      ruleIds: string[];
+      // The rule each save replaced (same type + selector), so Undo restores the old
+      // values instead of deleting the boost outright.
+      saved: Array<{ ruleId: string; previous: BoostRule | null }>;
       textRestore: { target: Element; text: string } | null;
     };
 
@@ -177,10 +185,10 @@ function styleActionButton(button: HTMLButtonElement, tone: "accent" | "muted"):
 
 function styleTabButton(button: HTMLButtonElement, active: boolean): void {
   button.style.flex = "1";
-  button.style.padding = "5px 6px";
+  button.style.padding = "5px 3px";
   button.style.fontSize = "10px";
   button.style.fontWeight = "700";
-  button.style.letterSpacing = "0.04em";
+  button.style.letterSpacing = "0.02em";
   button.style.textTransform = "uppercase";
   button.style.borderRadius = "4px";
   button.style.cursor = "pointer";
@@ -321,6 +329,25 @@ function buildTextPayload(
 async function restoreRule(id: string): Promise<void> {
   await chrome.runtime
     .sendMessage({ type: "RESTORE_BOOST", payload: { id } })
+    .catch(() => undefined);
+}
+
+// Undoing a re-save writes the previous rule's values back into the rule that replaced
+// it (undefined keys drop out of the UPDATE_BOOST payload = "turned off"). A brand-new
+// boost still gets deleted.
+async function revertSavedRule(entry: { ruleId: string; previous: BoostRule | null }): Promise<void> {
+  const { ruleId, previous } = entry;
+  if (!previous) {
+    await restoreRule(ruleId);
+    return;
+  }
+
+  const values: Record<string, unknown> = {};
+  for (const key of EDITABLE_KEYS[previous.type]) {
+    values[key] = (previous as unknown as Record<string, unknown>)[key];
+  }
+  await chrome.runtime
+    .sendMessage({ type: "UPDATE_BOOST", payload: { id: ruleId, values } })
     .catch(() => undefined);
 }
 
@@ -583,7 +610,7 @@ class BoostPicker {
     hud.style.position = "fixed";
     hud.style.top = "20px";
     hud.style.right = "20px";
-    hud.style.width = "260px";
+    hud.style.width = "300px";
     hud.style.padding = "14px 16px";
     hud.style.borderRadius = "8px";
     hud.style.border = "1px solid rgba(255, 216, 61, 0.28)";
@@ -768,19 +795,25 @@ class BoostPicker {
    */
   private async commitEdits(payloads: CreateBoostPayload[], message: string): Promise<void> {
     const session = this.editSession;
-    const ruleIds: string[] = [];
+    const saved: Array<{ ruleId: string; previous: BoostRule | null }> = [];
 
     for (const payload of payloads) {
+      // The upsert will replace a same-type+selector rule; remember it so Undo and the
+      // failure rollback can put its values back instead of deleting the boost.
+      const previous =
+        currentRules.find(
+          (rule) => rule.type === payload.type && rule.selector === payload.selector,
+        ) ?? null;
       const response = await createBoost(payload);
       if (!response.rule) {
-        await Promise.all(ruleIds.map(restoreRule));
+        await Promise.all(saved.map(revertSavedRule));
         await refreshAppliedRules();
         this.revertPreview();
         this.closeEditSession();
         this.updateHud(response.error ?? SAVE_FAILED_MESSAGE);
         return;
       }
-      ruleIds.push(response.rule.id);
+      saved.push({ ruleId: response.rule.id, previous });
     }
 
     await refreshAppliedRules();
@@ -794,7 +827,7 @@ class BoostPicker {
       session.target.textContent !== session.originalText;
     this.lastAction = {
       kind: "edit",
-      ruleIds,
+      saved,
       textRestore: textChanged ? { target: session.target, text: session.originalText } : null,
     };
     this.showActionConfirmation(message, true);
@@ -1376,6 +1409,8 @@ class BoostPicker {
     const applyPreview = () => {
       const css = textarea.value;
       setPreviewCss(isSafeCustomCss(css) ? css : "");
+      // The preview may have just hidden whatever the hover outline was on.
+      this.clearHighlight();
     };
     textarea.addEventListener("input", applyPreview);
     // Tab inside the stylesheet indents instead of moving focus out of the editor.
@@ -1472,6 +1507,7 @@ class BoostPicker {
     textarea.selectionStart = textarea.selectionEnd = textarea.value.length - 3;
     textarea.focus();
     textarea.dispatchEvent(new Event("input"));
+    this.clearHighlight();
   }
 
   private async performRemove(target: Element, sessionOnly: boolean): Promise<void> {
@@ -1537,7 +1573,7 @@ class BoostPicker {
       return;
     }
 
-    await Promise.all(pending.ruleIds.map(restoreRule));
+    await Promise.all(pending.saved.map(revertSavedRule));
     await refreshAppliedRules();
 
     if (pending.textRestore) {
@@ -1720,6 +1756,7 @@ class BoostPicker {
 
 const picker = new BoostPicker();
 let currentRules: BoostRule[] = [];
+let sitePaused = false;
 let styleElement: HTMLStyleElement | null = null;
 let mutationObserver: MutationObserver | null = null;
 let historyPatched = false;
@@ -1763,6 +1800,10 @@ function ensureStyleElement(): HTMLStyleElement {
 }
 
 function buildRuleCss(rules: BoostRule[]): string {
+  if (sitePaused) {
+    return "";
+  }
+
   const blocks: string[] = [];
   // Custom CSS goes last and raw: no specificity boost (the author gets exactly what
   // they wrote), and a malformed sheet can't swallow Zap's own rules ahead of it.
@@ -1771,7 +1812,7 @@ function buildRuleCss(rules: BoostRule[]): string {
   // Rules are stored newest first; emit oldest first so that when two rules touch the same
   // element, the newer one comes later in the stylesheet and wins.
   for (const rule of [...rules].reverse()) {
-    if (rule.type === "text" || !isSelectorValid(rule.selector)) {
+    if (rule.type === "text" || rule.disabled || !isSelectorValid(rule.selector)) {
       continue;
     }
 
@@ -1817,10 +1858,20 @@ function applyTextRules(rules: BoostRule[]): void {
       continue;
     }
 
+    const off = rule.disabled === true || sitePaused;
     const originalText = normalizeText(rule.originalText);
     document.querySelectorAll(rule.selector).forEach((element) => {
       const current = element.textContent ?? "";
       const applied = appliedText.get(element);
+      // Turning a text boost off should look like deleting it: put the site's text
+      // back, but only while the element still shows exactly what Zap wrote.
+      if (off) {
+        if (applied?.ruleId === rule.id && applied.text === current && rule.originalText) {
+          element.textContent = rule.originalText;
+          appliedText.delete(element);
+        }
+        return;
+      }
       if (current === rule.newText) {
         // Record HUD-previewed text too, so a later edit can still find the element.
         if (!applied) {
@@ -1843,7 +1894,12 @@ function applyTextRules(rules: BoostRule[]): void {
 
 async function refreshAppliedRules(): Promise<void> {
   const siteKey = getSiteKeyFromUrl(window.location.href);
-  const allRules = await getAllBoostRules();
+  const [allRules, pausedSites] = await Promise.all([getAllBoostRules(), getPausedSites()]);
+  sitePaused = pausedSites.includes(siteKey);
+  // Pause kicks the user out of Boost mode — boosts being off includes the HUD's own.
+  if (sitePaused) {
+    picker.exit();
+  }
   currentRules = allRules.filter((rule) => rule.siteKey === siteKey);
   renderSavedCss(currentRules);
   applyTextRules(currentRules);
@@ -1901,7 +1957,7 @@ function patchHistoryEvents(): void {
 
 function initializeContentScript(): void {
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== "local" || !changes[BOOST_STORAGE_KEY]) {
+    if (areaName !== "local" || (!changes[BOOST_STORAGE_KEY] && !changes[PAUSED_SITES_STORAGE_KEY])) {
       return;
     }
 
@@ -1917,6 +1973,13 @@ function initializeContentScript(): void {
           sendResponse({ success: true });
           return;
         case "ENTER_BOOST_MODE":
+          if (sitePaused) {
+            sendResponse({
+              success: false,
+              error: "Boosts are paused on this site. Resume them to use Boost mode.",
+            });
+            return;
+          }
           picker.enter();
           sendResponse({ success: true });
           return;

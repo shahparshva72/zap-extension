@@ -5,10 +5,17 @@ import {
   isNonEmptyString,
   normalizeStoredRule,
 } from "../shared/rules";
-import { getAllBoostRules, migrateLegacyRules, setAllBoostRules } from "../shared/storage";
+import {
+  getAllBoostRules,
+  getPausedSites,
+  migrateLegacyRules,
+  setAllBoostRules,
+  setPausedSites,
+} from "../shared/storage";
 import type {
   BackgroundToContentMessage,
   BoostRule,
+  CommandResult,
   CreateBoostPayload,
   ImportBoostsPayload,
   ImportBoostsResponse,
@@ -31,6 +38,13 @@ function ruleDedupeKey(rule: Pick<BoostRule, "siteKey" | "selector" | "type">): 
 // list and the second write silently drops the first one's change.
 let rulesQueue: Promise<unknown> = Promise.resolve();
 
+// Serializes any storage mutation (rules or the paused-site list) on the same queue.
+function enqueue<T>(task: () => Promise<T>): Promise<T> {
+  const run = rulesQueue.then(task);
+  rulesQueue = run.catch(() => undefined);
+  return run;
+}
+
 function updateRules<T>(
   mutate: (rules: BoostRule[]) => { rules: BoostRule[] | null; result: T },
 ): Promise<T> {
@@ -43,6 +57,21 @@ function updateRules<T>(
   });
   rulesQueue = run.catch(() => undefined);
   return run;
+}
+
+/**
+ * A site can only be paused while it still has boosts, so after rules are removed any
+ * paused site left with none is silently resumed.
+ */
+function prunePausedSites(): Promise<void> {
+  return enqueue(async () => {
+    const [rules, paused] = await Promise.all([getAllBoostRules(), getPausedSites()]);
+    const live = new Set(rules.map((rule) => rule.siteKey));
+    const next = paused.filter((siteKey) => live.has(siteKey));
+    if (next.length !== paused.length) {
+      await setPausedSites(next);
+    }
+  });
 }
 
 function upsertRule(rules: BoostRule[], rule: BoostRule): BoostRule[] {
@@ -122,6 +151,41 @@ function updateBoostRule(payload: UpdateBoostPayload): Promise<UpdateBoostRespon
     const nextRules = [...rules];
     nextRules[index] = rule;
     return { rules: nextRules, result: { success: true, rule } };
+  });
+}
+
+function setBoostEnabled(id: string, enabled: boolean): Promise<CommandResult> {
+  return updateRules((rules): { rules: BoostRule[] | null; result: CommandResult } => {
+    const index = rules.findIndex((rule) => rule.id === id);
+    if (index === -1) {
+      return { rules: null, result: { success: false, error: "That boost no longer exists." } };
+    }
+
+    const next = { ...rules[index] };
+    if (enabled) {
+      delete next.disabled;
+    } else {
+      next.disabled = true;
+    }
+    // In-place so the rule's position (CSS precedence order) is kept.
+    const nextRules = [...rules];
+    nextRules[index] = next;
+    return { rules: nextRules, result: { success: true } };
+  });
+}
+
+function setSitePaused(siteKey: string, paused: boolean): Promise<CommandResult> {
+  return enqueue(async () => {
+    const [rules, pausedSites] = await Promise.all([getAllBoostRules(), getPausedSites()]);
+    if (paused && !rules.some((rule) => rule.siteKey === siteKey)) {
+      return { success: false, error: "There are no boosts on this site to pause." };
+    }
+
+    const next = paused
+      ? [...new Set([...pausedSites, siteKey])]
+      : pausedSites.filter((site) => site !== siteKey);
+    await setPausedSites(next);
+    return { success: true };
   });
 }
 
@@ -220,10 +284,10 @@ async function listSiteSummaries(): Promise<SiteSummary[]> {
 function sendMessageToTab(
   tabId: number,
   message: BackgroundToContentMessage,
-): Promise<boolean> {
+): Promise<CommandResult | null> {
   return chrome.tabs.sendMessage(tabId, message).then(
-    () => true,
-    () => false,
+    (response) => (response as CommandResult | undefined) ?? { success: false },
+    () => null,
   );
 }
 
@@ -240,7 +304,7 @@ async function ensureContentScriptReady(tabId: number): Promise<boolean> {
     return false;
   }
 
-  if (await sendMessageToTab(tabId, { type: "PING" })) {
+  if ((await sendMessageToTab(tabId, { type: "PING" }))?.success) {
     return true;
   }
 
@@ -260,7 +324,7 @@ async function ensureContentScriptReady(tabId: number): Promise<boolean> {
   }
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    if (await sendMessageToTab(tabId, { type: "PING" })) {
+    if ((await sendMessageToTab(tabId, { type: "PING" }))?.success) {
       return true;
     }
 
@@ -273,10 +337,10 @@ async function ensureContentScriptReady(tabId: number): Promise<boolean> {
 async function sendTabCommand(
   tabId: number,
   message: BackgroundToContentMessage,
-): Promise<boolean> {
+): Promise<CommandResult | null> {
   const ready = await ensureContentScriptReady(tabId);
   if (!ready) {
-    return false;
+    return null;
   }
 
   return sendMessageToTab(tabId, message);
@@ -296,17 +360,22 @@ async function handleMessage(
 ): Promise<object> {
   switch (message.type) {
     case "ENTER_BOOST_MODE": {
-      const success = await sendTabCommand(message.payload.tabId, { type: "ENTER_BOOST_MODE" });
+      const response = await sendTabCommand(message.payload.tabId, { type: "ENTER_BOOST_MODE" });
+      // The content script may supply a specific reason (e.g. the site is paused).
       return {
-        success,
-        error: success ? undefined : "Boost mode could not be started on this tab.",
+        success: response?.success === true,
+        error:
+          response?.success === true
+            ? undefined
+            : (response?.error ?? "Boost mode could not be started on this tab."),
       };
     }
     case "EXIT_BOOST_MODE": {
-      const success = await sendTabCommand(message.payload.tabId, { type: "EXIT_BOOST_MODE" });
+      const response = await sendTabCommand(message.payload.tabId, { type: "EXIT_BOOST_MODE" });
       return {
-        success,
-        error: success ? undefined : "Boost mode could not be updated on this tab.",
+        success: response?.success === true,
+        error:
+          response?.success === true ? undefined : "Boost mode could not be updated on this tab.",
       };
     }
     case "CREATE_BOOST": {
@@ -327,28 +396,48 @@ async function handleMessage(
       return { success: true, rule: await addBoostRule(rule) };
     }
     case "LIST_BOOSTS": {
-      const [siteRules, siteSummaries] = await Promise.all([
+      const [siteRules, siteSummaries, pausedSites] = await Promise.all([
         listBoostRules(message.payload.siteKey),
         listSiteSummaries(),
+        getPausedSites(),
       ]);
-      return { success: true, siteRules, siteSummaries };
+      return { success: true, siteRules, siteSummaries, pausedSites };
     }
     case "RESTORE_BOOST": {
       const removed = await removeBoostRule(message.payload.id);
+      await prunePausedSites();
       await refreshTab(message.payload.tabId);
       return { success: true, removed };
     }
     case "RESTORE_SITE_BOOSTS": {
       const removedCount = await removeSiteBoostRules(message.payload.siteKey);
+      await prunePausedSites();
       await refreshTab(message.payload.tabId);
       return { success: true, removedCount };
     }
-    case "RESTORE_ALL_BOOSTS":
-      return { success: true, removedCount: await removeAllBoostRules() };
+    case "RESTORE_ALL_BOOSTS": {
+      const removedCount = await removeAllBoostRules();
+      await prunePausedSites();
+      return { success: true, removedCount };
+    }
     case "IMPORT_BOOSTS":
       return importBoostRules(message.payload.rules);
     case "UPDATE_BOOST": {
       const result = await updateBoostRule(message.payload);
+      if (result.success) {
+        await refreshTab(message.payload.tabId);
+      }
+      return result;
+    }
+    case "SET_BOOST_ENABLED": {
+      const result = await setBoostEnabled(message.payload.id, message.payload.enabled);
+      if (result.success) {
+        await refreshTab(message.payload.tabId);
+      }
+      return result;
+    }
+    case "SET_SITE_PAUSED": {
+      const result = await setSitePaused(message.payload.siteKey, message.payload.paused);
       if (result.success) {
         await refreshTab(message.payload.tabId);
       }
