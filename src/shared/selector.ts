@@ -41,7 +41,8 @@ const GENERATED_ID_PATTERNS = [/[:«»]/, /^headlessui-/i, /^ember\d+$/i, /^reac
 
 // Random tokens baked into an id, e.g. `CardInstancea1LlCUoWMvPvkQgLb7VMNw` or
 // `widget-3fa9c21b`. Real camelCase ids split into a few readable words; a random token
-// splits into many fragments of one to three characters. A wrong guess only costs the id
+// splits into many fragments of one to three characters, or has digits scattered through
+// mixed-case letters. A wrong guess only costs the id
 // shortcut, since the other selector strategies still apply.
 function looksRandom(value: string): boolean {
   const parts = value.split(/[-_]/);
@@ -53,7 +54,9 @@ function looksRandom(value: string): boolean {
     .filter((words) => words.length >= 3)
     .flat()
     .filter((word) => word.length <= 3).length;
-  return hexHash || (value.length >= 16 && shortFragments >= 4);
+  const digitGroups = value.match(/\d+(?=[a-zA-Z])/g)?.length ?? 0;
+  const scatteredDigits = digitGroups >= 2 && /[a-z]/.test(value) && /[A-Z]/.test(value);
+  return hexHash || (value.length >= 16 && (shortFragments >= 4 || scatteredDigits));
 }
 
 function isLikelyStableId(value: string): boolean {
