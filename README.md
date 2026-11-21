@@ -135,6 +135,12 @@ saved boost across every site:
    `Release` GitHub Actions workflow builds the zip and publishes a GitHub Release with it
    attached. The tag must match the version, or the workflow fails.
 
+To publish a pre-release for testing, keep the numeric version and add a suffix to the tag
+only, e.g. `git tag v0.2.0-beta.1 && git push origin v0.2.0-beta.1`. The workflow marks it
+as a pre-release, so it does not replace the latest release that the install steps point
+to. Chrome only accepts numeric versions, so the suffix never goes in `package.json` or
+`public/manifest.json`. Tag `v0.2.0` later for the full release.
+
 The same zip can be uploaded to the Chrome Web Store.
 
 ## Privacy
