@@ -21,6 +21,8 @@ interface BoostRuleBase {
   createdAt: string;
   pageUrl: string;
   pageTitle: string;
+  // Absent means enabled, so rules saved before this flag existed need no migration.
+  disabled?: boolean;
 }
 
 export interface RemoveBoostRule extends BoostRuleBase {
@@ -116,10 +118,12 @@ export interface CreateBoostResponse extends CommandResult {
 export interface ListBoostsResponse extends CommandResult {
   siteRules: BoostRule[];
   siteSummaries: SiteSummary[];
+  pausedSites: string[];
 }
 
 export interface ImportableBoostRule {
   siteKey: string;
+  disabled?: boolean;
   selector: string;
   label: string;
   type?: string;
@@ -185,7 +189,9 @@ export type PopupToBackgroundMessage =
   | { type: "RESTORE_SITE_BOOSTS"; payload: RestoreSiteBoostsPayload }
   | { type: "RESTORE_ALL_BOOSTS"; payload: Record<string, never> }
   | { type: "IMPORT_BOOSTS"; payload: ImportBoostsPayload }
-  | { type: "UPDATE_BOOST"; payload: UpdateBoostPayload };
+  | { type: "UPDATE_BOOST"; payload: UpdateBoostPayload }
+  | { type: "SET_BOOST_ENABLED"; payload: { id: string; enabled: boolean; tabId?: number } }
+  | { type: "SET_SITE_PAUSED"; payload: { siteKey: string; paused: boolean; tabId?: number } };
 
 export type ContentToBackgroundMessage = {
   type: "CREATE_BOOST";

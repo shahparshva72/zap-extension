@@ -58,7 +58,9 @@ function createSiteSummaryMarkup(summaries: SiteSummary[]): string {
 
 function createBoostItemMarkup(rule: BoostRule): string {
   return `
-    <li class="row">
+    <li class="row${rule.disabled ? " row--off" : ""}">
+      <input type="checkbox" class="boost-switch" data-toggle-id="${rule.id}" aria-label="Boost on"
+        title="Turn this boost on or off" ${rule.disabled ? "" : "checked"} />
       <div class="row-copy">
         <p class="row-label"><span class="type-badge">${TYPE_LABELS[rule.type]}</span>${escapeHtml(describeBoostRule(rule))}</p>
         <p class="row-meta">${formatDate(rule.createdAt)} · <code>${escapeHtml(rule.selector)}</code></p>
@@ -78,6 +80,11 @@ function setActionState(isBusy: boolean): void {
     .querySelectorAll<HTMLButtonElement>("button")
     .forEach((button) => {
       button.disabled = isBusy;
+    });
+  document
+    .querySelectorAll<HTMLInputElement>(".boost-switch")
+    .forEach((input) => {
+      input.disabled = isBusy;
     });
 }
 
@@ -153,10 +160,12 @@ async function render(): Promise<void> {
     return;
   }
 
+  const paused = data.pausedSites.includes(context.siteKey);
+
   const siteBoostsMarkup =
     data.siteRules.length === 0
       ? `<p class="empty">Nothing boosted here yet.</p>`
-      : `<ul class="row-list">${data.siteRules.map(createBoostItemMarkup).join("")}</ul>`;
+      : `<ul class="row-list${paused ? " dimmed" : ""}">${data.siteRules.map(createBoostItemMarkup).join("")}</ul>`;
 
   const otherSites = data.siteSummaries.filter(
     (summary) => summary.siteKey !== context.siteKey,
@@ -169,7 +178,9 @@ async function render(): Promise<void> {
     </header>
 
     <div class="mode-row">
-      <button id="enter-boost" class="mode-button" type="button">
+      <button id="enter-boost" class="mode-button" type="button" ${
+        paused ? `disabled title="Resume boosts to use Boost mode."` : ""
+      }>
         <span class="dot" data-tone="accent"></span>Boost mode
       </button>
       <button id="exit-boost" class="mode-button" type="button">
@@ -182,10 +193,16 @@ async function render(): Promise<void> {
     <section>
       <div class="section-head">
         <span class="section-title">This site <span class="count">${data.siteRules.length}</span></span>
-        <button id="restore-all" class="text-button" type="button" ${
-          data.siteRules.length === 0 ? "disabled" : ""
-        }>Restore all</button>
+        <span class="section-actions">
+          <button id="pause-site" class="text-button" type="button" ${
+            data.siteRules.length === 0 ? "disabled" : ""
+          }>${paused ? "Resume" : "Pause"}</button>
+          <button id="restore-all" class="text-button" type="button" ${
+            data.siteRules.length === 0 ? "disabled" : ""
+          }>Restore all</button>
+        </span>
       </div>
+      ${paused ? `<p class="paused-note">Paused — boosts are off on this site.</p>` : ""}
       ${siteBoostsMarkup}
     </section>
 
@@ -229,6 +246,46 @@ async function render(): Promise<void> {
         successMessage: "Boost mode is off.",
       },
     );
+  });
+
+  const pauseButton = document.getElementById("pause-site");
+  pauseButton?.addEventListener("click", async () => {
+    const success = await runPopupCommand(
+      {
+        type: "SET_SITE_PAUSED",
+        payload: { siteKey: context.siteKey, paused: !paused, tabId: context.tabId },
+      },
+      {
+        loadingMessage: paused ? "Resuming boosts…" : "Pausing boosts…",
+        successMessage: paused ? "Boosts resumed on this site." : "Boosts paused on this site.",
+      },
+    );
+    if (success) {
+      await render();
+    }
+  });
+
+  app.querySelectorAll<HTMLInputElement>("[data-toggle-id]").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const id = input.dataset.toggleId;
+      if (!id) {
+        return;
+      }
+
+      const success = await runPopupCommand(
+        {
+          type: "SET_BOOST_ENABLED",
+          payload: { id, enabled: input.checked, tabId: context.tabId },
+        },
+        {
+          loadingMessage: input.checked ? "Turning boost on…" : "Turning boost off…",
+          successMessage: input.checked ? "Boost turned on." : "Boost turned off.",
+        },
+      );
+      if (success) {
+        await render();
+      }
+    });
   });
 
   const restoreAllButton = document.getElementById("restore-all");

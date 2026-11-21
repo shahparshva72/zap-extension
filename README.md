@@ -84,6 +84,12 @@ Notes:
 2. Use `Restore` next to a single saved boost, or `Restore all` to remove every saved
    boost for that site.
 
+To switch a boost off without deleting it, use the switch at the left of each row —
+in the popup and on the `Manage all boosts` page. Turning it back on re-applies the
+boost. `Pause` (in the popup's `This site` head, or `Pause site` per group on the
+manage page) turns every boost for a site off at once; `Resume` brings them back.
+`Restore` still deletes a boost permanently.
+
 ## Manage All Boosts
 
 Open `Manage all boosts` at the bottom of the popup to get a full-page view of every

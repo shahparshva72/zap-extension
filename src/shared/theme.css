@@ -237,6 +237,74 @@ a.ghost-button {
   text-decoration: none;
 }
 
+/* ---- on/off switch + paused states (popup and manage) ---- */
+
+.boost-switch {
+  appearance: none;
+  flex: none;
+  width: 26px;
+  height: 15px;
+  margin: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  position: relative;
+  cursor: pointer;
+}
+
+.boost-switch::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  transition: left 120ms ease, background 120ms ease;
+}
+
+.boost-switch:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.boost-switch:checked::after {
+  left: 12px;
+  background: var(--accent-ink);
+}
+
+.boost-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.boost-switch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.row--off .row-copy {
+  opacity: 0.5;
+}
+
+.section-actions {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.paused-note {
+  margin: 0;
+  padding: 0 14px 8px;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.dimmed {
+  opacity: 0.55;
+}
+
 .empty {
   margin: 0;
   padding: 4px 14px 14px;
