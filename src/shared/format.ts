@@ -1,3 +1,4 @@
+import { describeStyleValues } from "./style";
 import type { BoostRule, BoostType } from "./types";
 
 export const TYPE_LABELS: Record<BoostType, string> = {
@@ -5,6 +6,8 @@ export const TYPE_LABELS: Record<BoostType, string> = {
   recolor: "Recolor",
   font: "Font",
   text: "Text",
+  style: "Style",
+  css: "CSS",
 };
 
 export const ZAP_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h16L12 12h8L3 23l4-8H2L12 6H5z"/></svg>`;
@@ -57,5 +60,13 @@ export function describeBoostRule(rule: BoostRule): string {
     }
     case "text":
       return `"${truncate(rule.originalText, 24)}" → "${truncate(rule.newText, 24)}"`;
+    case "style": {
+      const scope = rule.scope === "page" ? "Whole page" : rule.label;
+      return `${scope} · ${describeStyleValues(rule)}`;
+    }
+    case "css": {
+      const lines = rule.css.split("\n").filter((line) => line.trim().length > 0).length;
+      return `Custom CSS · ${lines} ${lines === 1 ? "line" : "lines"}`;
+    }
   }
 }

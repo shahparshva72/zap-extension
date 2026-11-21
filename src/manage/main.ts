@@ -24,6 +24,8 @@ const TYPE_FILTER_OPTIONS: Array<{ value: "all" | BoostType; label: string }> = 
   { value: "recolor", label: "Recolor" },
   { value: "font", label: "Font" },
   { value: "text", label: "Text" },
+  { value: "style", label: "Style" },
+  { value: "css", label: "CSS" },
 ];
 
 let allRules: BoostRule[] = [];
@@ -109,7 +111,11 @@ function matchesQuery(rule: BoostRule, query: string): boolean {
         ? rule.fontFamily
         : rule.type === "text"
           ? `${rule.originalText} ${rule.newText}`
-          : "";
+          : rule.type === "style"
+            ? describeBoostRule(rule)
+            : rule.type === "css"
+              ? rule.css
+              : "";
 
   const haystack = `${rule.siteKey} ${rule.label} ${rule.selector} ${extra}`.toLowerCase();
   return haystack.includes(query.toLowerCase());
@@ -282,6 +288,15 @@ function parseImportFile(raw: string): ImportableBoostRule[] {
       fontFamily: typeof entry.fontFamily === "string" ? entry.fontFamily : undefined,
       originalText: typeof entry.originalText === "string" ? entry.originalText : undefined,
       newText: typeof entry.newText === "string" ? entry.newText : undefined,
+      fontSize: typeof entry.fontSize === "number" ? entry.fontSize : undefined,
+      fontWeight: typeof entry.fontWeight === "number" ? entry.fontWeight : undefined,
+      lineHeight: typeof entry.lineHeight === "number" ? entry.lineHeight : undefined,
+      letterSpacing: typeof entry.letterSpacing === "number" ? entry.letterSpacing : undefined,
+      padding: typeof entry.padding === "number" ? entry.padding : undefined,
+      borderRadius: typeof entry.borderRadius === "number" ? entry.borderRadius : undefined,
+      opacity: typeof entry.opacity === "number" ? entry.opacity : undefined,
+      textAlign: typeof entry.textAlign === "string" ? entry.textAlign : undefined,
+      css: typeof entry.css === "string" ? entry.css : undefined,
       pageUrl: typeof entry.pageUrl === "string" ? entry.pageUrl : undefined,
       pageTitle: typeof entry.pageTitle === "string" ? entry.pageTitle : undefined,
       createdAt: typeof entry.createdAt === "string" ? entry.createdAt : undefined,

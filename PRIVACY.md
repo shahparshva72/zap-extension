@@ -16,8 +16,9 @@ stores the following information in your browser’s local extension storage
 - The website’s hostname, the page’s full URL, and its title.
 - A selector identifying the chosen element and a short label derived from the
   element’s text, accessibility label, or markup.
-- The customization type and values, such as colors, a font family, or an element
-  removal rule. Text boosts include both the original text and your replacement text.
+- The customization type and values, such as colors, a font family, numeric style
+  settings, custom CSS text you write, or an element removal rule. Text boosts include
+  both the original text and your replacement text.
 - A rule identifier and the date and time the rule was created.
 
 URLs, page titles, and selected text may contain personal or sensitive information,

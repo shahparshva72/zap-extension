@@ -1,3 +1,4 @@
+import { normalizeStyleValues } from "./style";
 import type { BoostRule } from "./types";
 
 const WWW_PREFIX = /^www\./i;
@@ -25,6 +26,23 @@ export function isSafeCssValue(value: unknown): value is string {
     isNonEmptyString(value) &&
     value.length <= MAX_CSS_VALUE_LENGTH &&
     !UNSAFE_CSS_VALUE.test(value)
+  );
+}
+
+const MAX_CUSTOM_CSS_LENGTH = 20000;
+
+// Custom CSS is a whole stylesheet, so `{}`, `;`, `@media` and friends must stay legal.
+// What's banned instead is anything that could make a page fetch a resource or break
+// out of the <style> element: url()/image-set()/etc. are data-exfiltration vectors
+// (attribute selectors + url() can leak page data), @import loads external sheets,
+// backslashes enable escape tricks like `u\72l(`, and `</style` would end the element
+// early. Zap promises zero network requests, and imported JSON is untrusted.
+const UNSAFE_CUSTOM_CSS =
+  /\\|@import|url\s*\(|image-set\s*\(|image\s*\(|cross-fade\s*\(|expression\s*\(|<\/style/i;
+
+export function isSafeCustomCss(value: unknown): value is string {
+  return (
+    isNonEmptyString(value) && value.length <= MAX_CUSTOM_CSS_LENGTH && !UNSAFE_CUSTOM_CSS.test(value)
   );
 }
 
@@ -92,6 +110,12 @@ export function normalizeStoredRule(entry: unknown): BoostRule | null {
             newText: record.newText,
           }
         : null;
+    case "style": {
+      const values = normalizeStyleValues(record, scope);
+      return values ? { ...base, type: "style", scope, ...values } : null;
+    }
+    case "css":
+      return isSafeCustomCss(record.css) ? { ...base, type: "css", css: record.css } : null;
     default:
       return null;
   }

@@ -1,5 +1,17 @@
-export type BoostType = "remove" | "recolor" | "font" | "text";
+export type BoostType = "remove" | "recolor" | "font" | "text" | "style" | "css";
 export type BoostScope = "element" | "page";
+export type TextAlign = "left" | "center" | "right" | "justify";
+
+export interface StyleValues {
+  fontSize?: number;
+  fontWeight?: number;
+  lineHeight?: number;
+  letterSpacing?: number;
+  padding?: number;
+  borderRadius?: number;
+  opacity?: number;
+  textAlign?: TextAlign;
+}
 
 interface BoostRuleBase {
   id: string;
@@ -34,7 +46,23 @@ export interface TextBoostRule extends BoostRuleBase {
   newText: string;
 }
 
-export type BoostRule = RemoveBoostRule | RecolorBoostRule | FontBoostRule | TextBoostRule;
+export interface StyleBoostRule extends BoostRuleBase, StyleValues {
+  type: "style";
+  scope: BoostScope;
+}
+
+export interface CssBoostRule extends BoostRuleBase {
+  type: "css";
+  css: string;
+}
+
+export type BoostRule =
+  | RemoveBoostRule
+  | RecolorBoostRule
+  | FontBoostRule
+  | TextBoostRule
+  | StyleBoostRule
+  | CssBoostRule;
 
 interface CreateBoostPayloadBase {
   selector: string;
@@ -52,7 +80,9 @@ export type CreateBoostPayload =
       backgroundColor?: string;
     })
   | (CreateBoostPayloadBase & { type: "font"; scope: BoostScope; fontFamily: string })
-  | (CreateBoostPayloadBase & { type: "text"; originalText: string; newText: string });
+  | (CreateBoostPayloadBase & { type: "text"; originalText: string; newText: string })
+  | (CreateBoostPayloadBase & { type: "style"; scope: BoostScope } & StyleValues)
+  | (CreateBoostPayloadBase & { type: "css"; css: string });
 
 export interface ListBoostsPayload {
   siteKey?: string;
@@ -99,6 +129,15 @@ export interface ImportableBoostRule {
   fontFamily?: string;
   originalText?: string;
   newText?: string;
+  fontSize?: unknown;
+  fontWeight?: unknown;
+  lineHeight?: unknown;
+  letterSpacing?: unknown;
+  padding?: unknown;
+  borderRadius?: unknown;
+  opacity?: unknown;
+  textAlign?: unknown;
+  css?: string;
   pageUrl?: string;
   pageTitle?: string;
   createdAt?: string;

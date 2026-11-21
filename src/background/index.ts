@@ -260,7 +260,13 @@ async function handleMessage(
       const pageTitle = sender.tab?.title || payload.pageTitle || pageUrl;
       const rule = buildRuleFromPayload(payload, getSiteKeyFromUrl(pageUrl), pageUrl, pageTitle);
       if (!rule) {
-        return { success: false, error: "That boost has an invalid value and was not saved." };
+        return {
+          success: false,
+          error:
+            payload.type === "css"
+              ? "Custom CSS can't use url(), @import, or backslashes, so pages never load anything external."
+              : "That boost has an invalid value and was not saved.",
+        };
       }
       return { success: true, rule: await addBoostRule(rule) };
     }
