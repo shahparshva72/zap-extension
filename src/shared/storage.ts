@@ -5,7 +5,7 @@ export const BOOST_STORAGE_KEY = "boostRulesV1";
 const LEGACY_STORAGE_KEY = "zapRulesV1";
 
 function normalizeRules(entries: unknown[]): BoostRule[] {
-  return entries.map(normalizeStoredRule).filter((rule): rule is BoostRule => rule !== null);
+  return entries.map((entry) => normalizeStoredRule(entry)).filter((rule): rule is BoostRule => rule !== null);
 }
 
 /**

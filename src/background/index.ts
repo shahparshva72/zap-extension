@@ -87,14 +87,17 @@ function buildRuleFromPayload(
 ): BoostRule | null {
   // Run the payload through the same validation as stored rules so an unsafe color or
   // font value is rejected before it is ever saved.
-  return normalizeStoredRule({
-    ...payload,
-    id: crypto.randomUUID(),
-    siteKey,
+  return normalizeStoredRule(
+    {
+      ...payload,
+      id: crypto.randomUUID(),
+      siteKey,
     createdAt: new Date().toISOString(),
-    pageUrl,
-    pageTitle,
-  });
+      pageUrl,
+      pageTitle,
+    },
+    { enforceLimits: true },
+  );
 }
 
 function addBoostRule(rule: BoostRule): Promise<BoostRule> {
@@ -134,7 +137,7 @@ function updateBoostRule(payload: UpdateBoostPayload): Promise<UpdateBoostRespon
       candidate[key] = values[key];
     }
 
-    const rule = normalizeStoredRule(candidate);
+    const rule = normalizeStoredRule(candidate, { enforceLimits: true });
     if (!rule) {
       return {
         rules: null,
@@ -219,7 +222,7 @@ function importBoostRules(entries: ImportBoostsPayload["rules"]): Promise<Import
     let skippedCount = 0;
 
     for (const entry of Array.isArray(entries) ? entries : []) {
-      if (!isNonEmptyString(entry?.siteKey)) {
+      if (!isNonEmptyString(entry?.siteKey) || entry.siteKey.length > 253) {
         skippedCount += 1;
         continue;
       }
@@ -229,15 +232,18 @@ function importBoostRules(entries: ImportBoostsPayload["rules"]): Promise<Import
         isNonEmptyString(entry.createdAt) && !Number.isNaN(Date.parse(entry.createdAt))
           ? entry.createdAt
           : new Date().toISOString();
-      const rule = normalizeStoredRule({
-        ...entry,
-        type: isNonEmptyString(entry.type) ? entry.type : "remove",
-        id: crypto.randomUUID(),
-        siteKey,
-        createdAt,
-        pageUrl: isNonEmptyString(entry.pageUrl) ? entry.pageUrl : `https://${siteKey}/`,
-        pageTitle: isNonEmptyString(entry.pageTitle) ? entry.pageTitle : siteKey,
-      });
+      const rule = normalizeStoredRule(
+        {
+          ...entry,
+          type: isNonEmptyString(entry.type) ? entry.type : "remove",
+          id: crypto.randomUUID(),
+          siteKey,
+          createdAt,
+          pageUrl: isNonEmptyString(entry.pageUrl) ? entry.pageUrl : `https://${siteKey}/`,
+          pageTitle: isNonEmptyString(entry.pageTitle) ? entry.pageTitle : siteKey,
+        },
+        { enforceLimits: true },
+      );
 
       if (!rule) {
         skippedCount += 1;

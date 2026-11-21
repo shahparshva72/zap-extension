@@ -1796,6 +1796,7 @@ const picker = new BoostPicker();
 let currentRules: BoostRule[] = [];
 let sitePaused = false;
 let styleElement: HTMLStyleElement | null = null;
+let savedCss = "";
 let mutationObserver: MutationObserver | null = null;
 let historyPatched = false;
 
@@ -1820,8 +1821,9 @@ function ensureStyleElement(): HTMLStyleElement {
     return styleElement;
   }
 
-  styleElement =
-    document.getElementById(STYLE_ELEMENT_ID) as HTMLStyleElement | null;
+  // The site removed our stylesheet (some rewrite or replace <head>). Put one back with
+  // the rules it held; an empty replacement would silently drop every CSS boost.
+  styleElement = document.getElementById(STYLE_ELEMENT_ID) as HTMLStyleElement | null;
 
   if (!styleElement) {
     styleElement = document.createElement("style");
@@ -1832,6 +1834,9 @@ function ensureStyleElement(): HTMLStyleElement {
   const parent = document.head || document.documentElement;
   if (!parent.contains(styleElement)) {
     parent.append(styleElement);
+  }
+  if (styleElement.textContent !== savedCss) {
+    styleElement.textContent = savedCss;
   }
 
   return styleElement;
@@ -1877,7 +1882,8 @@ function buildRuleCss(rules: BoostRule[]): string {
 }
 
 function renderSavedCss(rules: BoostRule[]): void {
-  ensureStyleElement().textContent = buildRuleCss(rules);
+  savedCss = buildRuleCss(rules);
+  ensureStyleElement().textContent = savedCss;
 }
 
 function normalizeText(value: string): string {
