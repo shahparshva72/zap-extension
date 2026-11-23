@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zap — Boost any webpage</title>
+<meta name="description" content="Zap is a Chromium Manifest V3 extension for boosting webpages, inspired by Arc Browser's Boosts. Zap elements, recolor, change fonts, edit text — saved per-site.">
+<link rel="icon" href="assets/zap-mark.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0e0f13;
+    --surface: #171921;
+    --border: #262a36;
+    --text: #eef0f6;
+    --muted: #9aa0b4;
+    --accent: #ffd43b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+  header { padding: 72px 0 40px; text-align: center; }
+  header img.logo { width: 96px; height: 96px; border-radius: 22px; }
+  h1 { font-size: 2.4rem; margin: 24px 0 8px; letter-spacing: -0.02em; }
+  .tagline { color: var(--muted); font-size: 1.15rem; max-width: 620px; margin: 0 auto; }
+  .cta { margin-top: 28px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 12px 22px; border-radius: 999px;
+    font-weight: 600; border: 1px solid var(--border);
+  }
+  .btn.primary { background: var(--accent); color: #1a1a05; border-color: var(--accent); }
+  .btn.primary:hover { text-decoration: none; filter: brightness(1.05); }
+  .btn.ghost { background: var(--surface); color: var(--text); }
+  .btn.ghost:hover { text-decoration: none; border-color: var(--muted); }
+  section { padding: 48px 0; }
+  h2 { font-size: 1.5rem; margin: 0 0 20px; letter-spacing: -0.01em; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 1.05rem; color: var(--accent); }
+  .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+  .shots { display: grid; gap: 20px; }
+  .shot img {
+    width: 100%; border-radius: 14px; border: 1px solid var(--border);
+    display: block;
+  }
+  .shot figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 8px; }
+  ol.steps { color: var(--muted); }
+  ol.steps li { margin-bottom: 6px; }
+  ol.steps code, p code {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 1px 6px; font-size: 0.9em;
+  }
+  footer {
+    border-top: 1px solid var(--border); margin-top: 32px;
+    padding: 32px 0; color: var(--muted); font-size: 0.9rem;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<header class="wrap">
+  <img class="logo" src="assets/logo.png" alt="Zap logo">
+  <h1>Zap</h1>
+  <p class="tagline">Boost any webpage. Zap a stray element, recolor something, swap the font, or fix a label — saved per-site so it stays boosted on every visit. Inspired by Arc Browser's Boosts.</p>
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/shahparshva72/zap-extension/releases/latest">Download latest release</a>
+    <a class="btn ghost" href="https://github.com/shahparshva72/zap-extension">View source on GitHub</a>
+  </div>
+</header>
+
+<section class="wrap" id="features">
+  <h2>Boost tools</h2>
+  <div class="cards">
+    <div class="card"><h3>⚡ Zap</h3><p>Remove any element — permanently, or just for this visit with Shift+click.</p></div>
+    <div class="card"><h3>🎨 Recolor</h3><p>Set an element's text or background color with a live preview, or recolor the whole page.</p></div>
+    <div class="card"><h3>🔤 Font</h3><p>Pick a preset or type any CSS font stack and preview it before saving.</p></div>
+    <div class="card"><h3>✏️ Text</h3><p>Rewrite a label's text. It re-applies even if the site's JavaScript redraws it.</p></div>
+    <div class="card"><h3>🧩 Style</h3><p>No-code sliders for size, weight, spacing, padding, corners, and more.</p></div>
+    <div class="card"><h3>📜 CSS</h3><p>A whole-site stylesheet editor for anything else. Click an element to insert its selector.</p></div>
+  </div>
+</section>
+
+<section class="wrap" id="screenshots">
+  <h2>Screenshots</h2>
+  <div class="shots">
+    <figure class="shot"><img src="assets/screenshot-01-zap.png" alt="Zap tool removing an element" loading="lazy"><figcaption>Zapping an element on the page.</figcaption></figure>
+    <figure class="shot"><img src="assets/screenshot-02-recolor.png" alt="Recolor tool with live preview" loading="lazy"><figcaption>Recoloring with a live preview.</figcaption></figure>
+    <figure class="shot"><img src="assets/screenshot-03-font.png" alt="Font tool" loading="lazy"><figcaption>Changing the page font.</figcaption></figure>
+    <figure class="shot"><img src="assets/screenshot-04-text.png" alt="Text editing tool" loading="lazy"><figcaption>Editing a label's text in place.</figcaption></figure>
+    <figure class="shot"><img src="assets/screenshot-05-manage.png" alt="Manage all boosts page" loading="lazy"><figcaption>Manage every boost across every site.</figcaption></figure>
+  </div>
+</section>
+
+<section class="wrap" id="install">
+  <h2>Install</h2>
+  <ol class="steps">
+    <li>Download the latest <code>zap-extension-v*.zip</code> from the <a href="https://github.com/shahparshva72/zap-extension/releases/latest">Releases page</a> and unzip it.</li>
+    <li>Open <code>chrome://extensions</code> in Chrome, Arc, Edge, or Brave and turn on <code>Developer mode</code>.</li>
+    <li>Click <code>Load unpacked</code> and select the unzipped folder (the one containing <code>manifest.json</code>).</li>
+    <li>Pin Zap from the extensions menu, open any page, and press <code>Boost mode</code>.</li>
+  </ol>
+</section>
+
+<footer class="wrap">
+  <p>Zap makes no network requests — boosts live only in your browser's local extension storage.
+  Read the <a href="https://github.com/shahparshva72/zap-extension/blob/main/PRIVACY.md">privacy policy</a>.
+  MIT licensed.</p>
+</footer>
+</body>
+</html>
